@@ -1,0 +1,359 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+	<title>TCAP User's Guide</title>
+	<link rel="stylesheet" type="text/css" href="stylesheet.css">
+</head>
+<body bgcolor="white">
+	<h1>TCAP User's Guide</h1>
+	<p>Copyright &#169; 2003-2005 <a href=http://www.motivity.ca>Motivity Telecom Inc.</a></p>
+	<p><b>Version:</b> 1.1</p>
+	<p><b>Authors:</b> Vance Shipley (<a href="mailto:vances@motivity.ca"><tt>vances@motivity.ca</tt></a>).</p>
+
+	<p>The <a href="tcap.html"><tt>tcap</tt></a> application is a protocol stack
+	implementation of the Transaction Capabilities Application Part (TCAP) of
+	the Signaling System No. 7 (SS7) specifications <cite>ITU-T Q.771-Q.774</cite> and
+	<cite>ANSI T1.114-2000</cite>.  Transaction Capabilities (TC) users include
+	the Intelligent Network Application Protocol (INAP) ITU-T Q.1208 and the Mobile
+	Application Part (MAP) 3GPP 29.002.</p>
+
+	<h3>Requirements</h3>
+	<p>This application includes only the TCAP procedures and must be used
+	with a seperate application providing the SCCP service.
+	The <a href="http://www.motivity.ca/nms"><tt>nms</tt></a>
+	application provides a binding to the embedded SCCP layer on the 
+	TX3220/TX4000 boards.  An native Erlang SCCP User Adaptation (SUA)
+	for SIGTRAN SCTP is planned.</p>
+
+	<h3>Transaction Capabilities</h3>
+	<p>Transaction Capabilities (TC) provides support for interactive
+	applications in a distributed environment through a generic remote procedure
+	call service.  TC provides the framework for invoking remote procedures
+	and returning the results of these procedures.</p>
+	<a href="transaction_capabilities.png">Figure 1-1</a>
+	shows the structure of TC using SS7 network services.  TC is composed of two
+	sublayers; the Component Sublayer (CSL)  and the Transaction Sublayer (TSL).
+	The CSL deals with components which are the Application Protocol Data Units (APDU)
+	that convey remote operations and their responses.  The CSL optionally may
+	utilize the dialogue portion protocol for conveying information related to 
+	application context or user information.  The TSL deals with the exchange of
+	messages containing components and optionally, a dialogue portion, between TC-Users.</p>
+
+	<p>Figure 1-1: TC in SS7
+	<img alt="diagram of transaction capabilities" name="figure1-1" src="transaction_capabilities.png"></p>
+
+	<h3>Open Systems Interconnection (OSI)</h3>
+	<p>TC is based on the Remote Operations concept defined in Recommendation X.880 (ROS).
+	TC allows communication between TC-Users across an SS7 network.
+	This communication can be modelled with the OSI seven layer stack as shown in
+	<a href="osi_model.png">Figure-2.1</a>.  SS7 does not define an Intermediate Services Part
+	(ISP) so the Presentation, Session and Transport layers are formally missing however 
+	some aspects of the these are present in TC.  CSL lies entirely within the application layer.</p>
+	<p>Figure 2-1: TC in OSI
+	<img alt="diagram of osi layers" name="figure2-1" src="osi_model.png"></p>
+
+	<a href="application_process.png">Figure-2.2</a> shows the structure of the OSI Application Layer.
+	An Application Process (AP) consists of application code within and outside the OSI 
+	framework.  The part of an application which resides in the OSI framework is called
+   an Application Entity (AE).  The AE may contain a number of cooperating components,
+	each with it's own protocol elements.  These components are called Application 
+	Service Elements (ASE).  An ASE is a separately defined (standardized) part of an
+	Application Entity.  ASEs provide a service to higher level ASEs not a higher level 
+	layer.  The distinction being that unlike layer services an ASE service may consider 
+	only part of the communication between Application Entities.</p>
+	<p>Figure 2-2: OSI Application Process
+	<img alt="diagram of application process" name="figure2-2" src="application_process.png"></p>
+
+	<p>The Component sublayer is in partial alignment with the capabilities of the
+	Remote Operation Service Element (ROSE) X.219 and X.229. The X.229 protocol is
+	contained within the TC component protocol.  CSL includes some extensions to ROSE.
+	The dialogue control facilities are in partial alignment with the capabilities 
+	of the Association Control Service Element (ACSE) X.217 and X.227. The abstract
+	syntax for the dialogue control APDUs are a subset of the OSI ACSE abstract syntax.</p>
+	<a href="tcap_application_process.png">Figure-2.3</a> shows an Application Process
+	with an Application Entity which includes the Transaction Capabilities ASE and the
+	Mobile Application Part ASE.</p>
+	<p>Figure 2-3: SS7 Application Process
+	<img alt="diagram of SS7 application process" name="figure2-3" src="tcap_application_process.png"></p>
+
+	<p>An Application Entity (AE) is the part of your Application Process (AP) which
+	uses the services of a combined set of ASEs.  An AE-Type defines a set of functions
+	used for communications.  For example one AE-Type may combine a TC ASE with a MAP ASE
+	while another combines a TC ASE with an INAP ASE.  An AE Invocation (AEI) is an instance
+	of an AE and it's ASEs.</p>
+
+	<p>An AEI may perform a subset of the communication functions defined by the AE-Type.
+	The actual procedures that may need to be performed for an instance of communication
+	are determined by the Application Context (AC).  The Application Context states which
+	functions are needed.  Based on this information the AEI is instantiated from the
+	AE-Type which fits these criteria.</p>
+
+	<p>Using the <a href="tcap.html"><tt>tcap</tt></a> application you will implement 
+	your Application Process (AP) and Application Entity (AE) in Erlang.  The set of
+	processes which make up an instance of the Component Sublayer (CSL) form the TC ASE.
+	For each new dialogue an AEI including a TC ASE and a TC-User ASE (e.g. MAP) is created.
+	The AE uses the ASEs together to provide higher level functions to the AP.</p>
+	<p>Figure 3-1: AE Invocations
+	<img alt="diagram of AE invocations" name="figure3-1" src="ae_invocations.png"></p>
+
+	<p>For example you may have an AE which uses TCAP and MAP ASEs implemented in a
+	<tt>gen_fsm</tt> callback module named ae_map_v3.  An AEI for a location update
+	could be created as:
+	<pre>
+	gen_fsm:start_link(ae_map_v3, ['networkLocUpContext-v3', TSL], [])</pre>
+	<p>Where <tt>'networkLocUpContext-v3'</tt> is the application context name and
+	<tt>TSL</tt> is a reference to the transaction sublayer used for this operation.
+	The callback module would start TC and MAP and coordinate them to provide the
+	location update service to the Application Program.</p>
+	<pre>
+	-module(ae_map_v3).
+	-export([init/1, handle_event/2]).
+	-behaviour(gen_fsm).
+	-record(state, {ac, tsl, csl, map}).
+
+	init([AC, TSL]) ->
+	    case tcap:open(TSL, self(), []) of
+	        {ok, CSL} ->
+	            case map:open(CSL, self(), []) of
+	               {ok, MAP} ->
+	                   State = #state{ac = AC, tsl = TSL, csl = CSL, map = MAP},
+	                   {ok, idle, State};
+	               Error ->
+	                   Error
+	            end;
+	         Error ->
+	            Error
+	    end.
+	</pre>
+
+	<p>In ASN.1 an <tt>OPERATION-PACKAGE</tt> type is used to define an ASE.  An
+	<tt>APPLICATION-CONTEXT</tt> type defines an AC.  An application protocol is defined
+	by the set of all possible ACs.  The above example uses these definitions from the
+	3GPP/GSM MAP specification:</p>
+
+	<pre>
+	networkLocUpContext-v3 APPLICATION-CONTEXT ::= {
+	    -- Responder is HLR if Initiator is VLR
+	    INITIATOR CONSUMER OF {locationUpdatingPackage-v3 | dataRestorationPackage-v3}
+	    RESPONDER CONSUMER OF {subscriberDataMngtPackage-v3 | tracingPackage-v3}
+	    ID                    {map-ac networkLocUp(1) version3(3)}
+	}
+	</pre>
+	<pre>
+	locationUpdatingPackage-v3 OPERATION-PACKAGE ::= {
+	    -- Supplier is HLR if Consumer is VLR
+	    CONSUMER INVOKES      {updateLocation}
+	    SUPPLIER INVOKES      {forwardCheckSs-Indication}
+	}
+	</pre>
+	<pre>
+	updateLocation OPERATION ::= { --Timer m
+	    ARGUMENT              UpdateLocationArg
+	    RESULT                UpdateLocationRes
+	    ERRORS                {systemFailure | dataMissing | unexpectedDataValue | unknownSubscriber | roamingNotAllowed}
+	    CODE                  local:2
+	}
+	</pre>
+
+	<p>In a complex AE there may be multiple TC-User ASEs.  The operation codes 
+	(e.g. <tt>local:2</tt> for the <tt>updateLocation</tt> above) of the received
+	components allow the AE to distribute to the appropriate ASE.  While the 
+	<tt>locationUpdatingPackage-v3</tt> definition above appears informally in the
+	current specifications MAP is still viewed as having a single Application Service Element
+	for historical reasons.  The Intelligent Network Application Protocol (INAP) however
+	clearly defines many distinct ASEs.  <a href="inap_aei.png">Figure 3-2</a>
+	shows the configuration of an AEI for INAP using the
+	<tt>scf-to-ssf-status-reporting-v1</tt> AC.</p> 
+	<p>Figure 3-2: Example INAP AEI
+	<img alt="diagram of INAP AEI" name="figure3-2" src="inap_aei.png"></p>
+
+	<h3>Addressing</h3>
+	<p>When used with SS7 network services the addressesing of the Signaling Connection
+	Control Part (SCCP) is used.  The SCCP CalledParty and CallingParty address formats
+	are used in the TCAP address parameters; Destination Address and Originating Address.
+	These parameters identify the destination and originating TC-user.</p>
+	<p>The SCCP Subsystem Number (SSN) is used by SCCP for message distrubution to
+	seperate instances of the TCAP Transaction Sublayer (TSL).</p>
+	<p>Figure 4-1: SSN Distribution
+	<img alt="diagram of ssn distribution" name="figure4-1" src="ssn_distribution.png"></p>
+
+
+	<h3>Process Communication</h3>
+	<p>A number of processes interact to provide the TCAP service. 
+	<a href="tcap_messaging.png">Figure 5-1</a> depicts the message paths
+	between processes used with the TCAP application.</p>
+	
+	<p>The TCAP protocol layer is split into two sublayers; the Transaction
+	Sublayer and the Component Sublayer.</p>
+	
+	<p>In the transaction sublayer a transaction coordinator (TCO)
+	process performs marshalling of incoming indications from the 
+	SCCP service access point (SAP).  It spawns a transaction state
+	machine (TSM) for each new transaction.</p>
+
+	<p>In the component sublayer a dialogue handler (DHA) process 
+	is started for each transaction.  It then spawns a component
+	coordinator process (CCO).  For a remotely initiated transaction
+	DHA is started by TCO.  For a locally initiated transaction DHA
+	is started by the TC-User.  An invocation state machine (ISM)
+	is started for each locally invoked operation involved in the
+	transaction.<p>
+
+	<p>Figure 5-1<br>
+	<img alt="diagram of process communication" name="figure5-1" src="tcap_messaging.png"></p>
+
+	<h3>Modules</h3>
+
+	<h5><tt>tcap</tt></h5>
+	<p>This module implements the application programming interface (API) for the application.</p>
+
+	<h5><tt>tcap_app</tt></h5>
+	<p>This is the start module for the application. 
+	It is an <tt>application</tt> behaviour callback module.</p>
+
+	<h5><tt>tcap_sup</tt></h5>
+	<p>This module implements the top level supervisor for the application. 
+	It is a <tt>supervisor</tt> behaviour callback module.</p>
+
+	<h5><tt>tcap_sap_sup</tt></h5>
+	<p>This module implements a supervisor at the SAP level, one per SAP. 
+	It is a <tt>supervisor</tt> behaviour callback module.</p>
+
+	<h5><tt>tcap_tco_server</tt></h5>
+	<p>This module implements the transaction coordinator (TCO).
+	It is a <tt>gen_server</tt> behaviour callback module.</p>
+
+	<h5><tt>tcap_transaction_sup</tt></h5>
+	<p>This module implements a supervisor at the transaction level, one per transaction.
+	It is a <tt>supervisor</tt> behaviour callback module.</p>
+
+	<h5><tt>tcap_tsm_fsm</tt></h5>
+	<p>This module implements the transaction state machine (TSM). 
+	It is a <tt>gen_fsm</tt> behaviour callback module.</p>
+
+	<h5><tt>tcap_dialogue_sup</tt></h5>
+	<p>This module implements a supervisor at the dialogue level, one per dialogue (transaction).
+	It is a <tt>supervisor</tt> behaviour callback module.</p>
+
+	<h5><tt>tcap_dha_fsm</tt></h5>
+	<p>This module implements the dialogue handler (DHA). 
+	It is a <tt>gen_fsm</tt> behaviour callback module.</p>
+
+	<h5><tt>tcap_components_sup</tt></h5>
+	<p>This module implements a supervisor at the components level, one per component sequence (dialogue/transaction).
+	It is a <tt>supervisor</tt> behaviour callback module.</p>
+
+	<h5><tt>tcap_cco_server</tt></h5>
+	<p>This module implements the component coordinator (CCO).
+	It is a <tt>gen_server</tt> behaviour callback module.</p>
+
+	<h5><tt>tcap_invocation_sup</tt></h5>
+	<p>This module implements a supervisor at the invocation level, one per component sequence (dialogue/transaction).
+	It is a <tt>supervisor</tt> behaviour callback module.</p>
+
+	<h5><tt>tcap_ism_fsm</tt></h5>
+	<p>This module implements the invocation state machine (ISM). 
+	It is a <tt>gen_fsm</tt> behaviour callback module.</p>
+
+	<h3>Supervision Tree</h3>
+
+	<p>The processes which make up an instance of the TCAP service layer are all instantiated within a single 
+	supervision tree.  When the application is started a top level supervisor is created with no children.  
+	The user calls <a href="tcap.html#open-3"><tt>tcap:open/3</tt></a> to create a new
+	service access point (SAP) which dynamically adds a <tt>tcap_sap_sup</tt> supervisor with one worker TCO.</p>
+
+	<a href="tcap_supervision.png">Figure 5-2</a> shows the structure of the supervision tree.</p>
+
+	<p>For every new transaction ID assigned (Begin indication or request) a <tt>tcap_transaction_sup</tt>
+	supervisor is dynamically added to the <tt>tcap_sap_sup</tt> supervisor with one TSM worker and a
+	<tt>tcap_dialogue_sup</tt> supervisor.  In the case of a Unidirectional primitive no transaction is 
+	assigned.  Instead a <tt>tcap_dialogue_sup</tt> supervisor is dynamically added to the <tt>tcap_sap_sup</tt>
+	supervisor.</p>
+	<p>When a <tt>tcap_dialogue_sup</tt> supervisor is started it immediately creates a DHA worker and a
+	<tt>tcap_components_sup</tt> supervisor with one CCO worker and a <tt>tcap_invocation_sup</tt> supervisor.</p>
+	<p>A <tt>tcap_ism_fsm</tt> worker is dynamically added to the <tt>tcap_invocation_sup</tt> supervisor for
+	each locally invoked operation.</p>
+
+	<p>Figure 5-2<br>
+	<img alt="diagram of supervision tree" name="figure5-2" src="tcap_supervision.png"></p>
+
+
+	<h3>Distribution</h3>
+
+	<p>In order to facilitate building very large systems the processes involved may be distributed across nodes. 
+	<a href="tcap_distribution.png">Figure 6-1</a> shows some examples of how this distribution may be accomplished.</p>
+
+	<p>Figure 6-1<br>
+	<img alt="diagram of process distribution" name="figure6-1" src="tcap_distribution.png"></p>
+
+	<p>When a SAP is created with <a href="tcap.html#open-3"><tt>tcap:open/3</tt></a> the 
+	<a href="tcap_tco_server.html"><tt>tcap_tco_server</tt></a> callback module name is provided to start a TCO
+	which can adapt the specific implementation of SCCP in use to this TCAP service layer.  Arguments are also
+	passed to specify instance specific configuration such as SCCP subsystem number.</p>
+	<p>The <a href="tcap_tco_server.html"><tt>tcap_tco_server</tt></a> callback module exports start functions
+	used to create SAP, TCO, TSM and DHA processes.  This allows the user to configure how the application is
+	distributed.</p>
+	<p>The DHA always starts the CCO and ISM processes on it's local node.</p>
+
+
+	<h3>Primitives (ITU)</h3>
+
+	<h4>TC-User &#8594 Component Sublayer</h4>
+	<h5>Dialogue Handling</h5>
+	<tt>{'TC', 'UNI', request, Parms}</tt><br>
+	<tt>{'TC', 'BEGIN', request, Parms}</tt><br> 
+	<tt>{'TC', 'CONTINUE', request, Parms}</tt><br>
+	<tt>{'TC', 'END', request, Parms}</tt><br>
+	<tt>{'TC', 'U-ABORT', request, Parms}</tt><br>
+	<h5>Component Handling</h5>
+	<tt>{'TC', 'INVOKE', request, Parms}</tt><br>
+	<tt>{'TC', 'RESULT-L', request, Parms}</tt><br>
+	<tt>{'TC', 'RESULT-NL', request, Parms}</tt><br>
+	<tt>{'TC', 'U-ERROR', request, Parms}</tt><br>
+	<tt>{'TC', 'U-CANCEL', request, Parms}</tt><br>
+	<tt>{'TC', 'U-REJECT', request, Parms}</tt><br>
+
+	<h4>Component Sublayer &#8594 TC-User</h4>
+	<h5>Dialogue Handling</h5>
+	<tt>{'TC', 'UNI', indication, Parms}</tt><br> 
+	<tt>{'TC', 'BEGIN', indication, Parms}</tt><br> 
+	<tt>{'TC', 'END', indication, Parms}</tt><br> 
+	<tt>{'TC', 'U-ABORT', indication, Parms}</tt><br> 
+	<tt>{'TC', 'P-ABORT', indication, Parms}</tt><br> 
+	<tt>{'TC', 'NOTICE', indication, Parms}</tt><br> 
+	<h5>Component Handling</h5>
+	<tt>{'TC', 'INVOKE', indication, Parms}</tt><br>
+	<tt>{'TC', 'RESULT-L', indication, Parms}</tt><br>
+	<tt>{'TC', 'RESULT-NL', indication, Parms}</tt><br>
+	<tt>{'TC', 'U-ERROR', indication, Parms}</tt><br>
+	<tt>{'TC', 'L-CANCEL', indication, Parms}</tt><br>
+	<tt>{'TC', 'L-REJECT', indication, Parms}</tt><br>
+	<tt>{'TC', 'R-REJECT', indication, Parms}</tt><br>
+	<tt>{'TC', 'U-REJECT', indication, Parms}</tt><br>
+	<tt>{'TC', 'TIMER-RESET', indication, Parms}</tt><br>
+
+	<h4>Component Sublayer &#8594 Transaction Sublayer</h4>
+	<tt>{'TR', 'UNI', request, Parms}</tt><br> 
+	<tt>{'TR', 'BEGIN', request, Parms}</tt><br> 
+	<tt>{'TR', 'CONTINUE', request, Parms}</tt><br> 
+	<tt>{'TR', 'END', request, Parms}</tt><br> 
+	<tt>{'TR', 'U-ABORT', request, Parms}</tt><br> 
+
+	<h4>Transaction Sublayer &#8594 Component Sublayer</h4>
+	<tt>{'TR', 'UNI', indication, Parms}</tt><br> 
+	<tt>{'TR', 'BEGIN', indication, Parms}</tt><br> 
+	<tt>{'TR', 'CONTINUE', indication, Parms}</tt><br> 
+	<tt>{'TR', 'END', indication, Parms}</tt><br> 
+	<tt>{'TR', 'U-ABORT', indication, Parms}</tt><br> 
+	<tt>{'TR', 'P-ABORT', indication, Parms}</tt><br> 
+	<tt>{'TR', 'NOTICE', indication, Parms}</tt><br> 
+
+	<h4>Transaction Sublayer &#8594 SCCP</h4>
+	<tt>{'N', 'UNITDATA', request, Parms}</tt><br> 
+
+	<h4>SCCP &#8594 Transaction Sublayer</h4>
+	<tt>{'N', 'UNITDATA', indication, Parms}</tt><br> 
+	<tt>{'N', 'NOTICE', indication, Parms}</tt><br> 
+
+</body>
+</html>

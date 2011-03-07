@@ -1,0 +1,13 @@
+{application, tcap,
+	[{description, "Transaction Capabilities Application Part"},
+		{vsn, "0.1"},
+		{modules, [tcap, tcap_app, tcap_sup,
+				transaction_coordinator_sup, transaction_coordinator_server,
+				transaction_sup, transaction_fsm,
+				dialogue_sup, dialogue_fsm,
+				component_cordinator_sup, component_cordinator,
+				invocation_sup, invocation_fsm]},
+		{registered, []},
+		{applications, [kernel, stdlib, sccp]},
+		{env, [{supref, {local, tcap_sup}}]},
+		{mod, {tcap_app, []}}]}.
