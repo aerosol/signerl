@@ -1,0 +1,106 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+	<title>MAP User's Guide</title>
+	<link rel="stylesheet" type="text/css" href="stylesheet.css">
+</head>
+<body bgcolor="white">
+	<h1>MAP User's Guide</h1>
+	<p>Copyright &#169; 2003-2005 Motivity Telecom Inc.</p>
+	<p><b>Version:</b> 1.0</p>
+	<p><b>Authors:</b> Vance Shipley (<a href="mailto:vances@motivity.ca"><tt>vances@motivity.ca</tt></a>).</p>
+
+	<p>The MAP application is a protocol stack implementation of the Mobile Application Part procedures.</p>
+
+	<h3>Application</h3>
+
+	<h3>Requirements</h3>
+	<p>This application includes only the MAP procedures and must be used with a seperate application providing the TCAP service.
+	The <a href="http://www.motivity.ca/tcap"><tt>tcap</tt></a> application may be used in conjunction with the
+	<a href="http://www.motivity.ca/sccp"><tt>sccp</tt></a> and
+	<a href="http://www.motivity.ca/nms"><tt>nms</tt></a> applications for a complete system.</p>
+
+	<h3>Process Communication</h3>
+	<p>
+	<a href="#figure1-1">Figure 1-1</a> depicts the message paths between processes.</p>
+	
+	Figure 1-1<br>
+	<img alt="diagram of process communication" name="figure1-1" src="map_messaging.png"><br>
+
+	<h3>Modules</h3>
+
+	<h5><tt>map</tt></h5>
+	<p>This library module implements the user API for the application.</p>
+
+	<h5><tt>map_sup</tt></h5>
+	<p>This <tt>supervisor</tt> behaviour callback module implements the top level supervisor for the application.</p>
+
+	<h5><tt>map_load_fsm</tt></h5>
+	<p>This <tt>gen_fsm</tt> behaviour callback module implements the load control process.</p>
+
+	<h5><tt>map_sap_sup</tt></h5>
+	<p>This <tt>supervisor</tt> behaviour callback module implements the service access point (SAP) supervisors.</p>
+
+	<h5><tt>map_pm_sup</tt></h5>
+	<p>This <tt>supervisor</tt> behaviour callback module implements the protocol machine (PM) supervisors.</p>
+
+	<h5><tt>map_dsm_dsm</tt></h5>
+	<p>This <tt>gen_fsm</tt> behaviour callback module implements the dialogue state machines (DSM).</p>
+
+	<h5><tt>map_psm_fsm</tt></h5>
+	<p>This <tt>gen_fsm</tt> behaviour callback module implements the performing state machines (PSM).</p>
+
+	<h5><tt>map_rsm_fsm</tt></h5>
+	<p>This <tt>gen_fsm</tt> behaviour callback module implements the requesting state machines (RSM).</p>
+
+
+	<h3>Supervision Tree</h3>
+
+	<p>The processes which make up the MAP application are all instantiated under a single supervisor.  
+	<a href="#figure1-2">Figure 1-2</a> shows the structure of the supervision tree.</p>
+
+	Figure 1-2<br>
+	<img alt="diagram of supervision tree" name="figure1-2" src="map_supervision.png"><br>
+
+	<h3>Common Primitives</h3>
+
+	<h4>MAP-User &#8594 MAP</h4>
+	<tt>{'MAP', 'OPEN', request, Parms}</tt><br>
+	<tt>{'MAP', 'CLOSE', request, Parms}</tt><br>
+	<tt>{'MAP', 'DELIMITER', request, Parms}</tt><br>
+	<tt>{'MAP', 'U-ABORT', request, Parms}</tt><br>
+
+	<h4>MAP &#8592 MAP-User</h4>
+	<tt>{'MAP', 'OPEN', indication, Parms}</tt><br>
+	<tt>{'MAP', 'CLOSE', indication, Parms}</tt><br>
+	<tt>{'MAP', 'DELIMITER', indication, Parms}</tt><br>
+	<tt>{'MAP', 'U-ABORT', indication, Parms}</tt><br>
+	<tt>{'MAP', 'P-ABORT', indication, Parms}</tt><br>
+	<tt>{'MAP', 'NOTICE', indication, Parms}</tt><br>
+
+	<h3>GSM Primitives</h3>
+
+	<h4>MAP-User &#8594 MAP</h4>
+	<tt>{'MAP', 'UPDATE_LOCATION', request, Parms}</tt><br>
+	<tt>{'MAP', 'CANCEL_LOCATION', request, Parms}</tt><br>
+	...<br>
+
+	<h4>MAP &#8592 MAP-User</h4>
+	<tt>{'MAP', 'UPDATE_LOCATION', indication, Parms}</tt><br>
+	<tt>{'MAP', 'CANCEL_LOCATION', indication, Parms}</tt><br>
+	...<br>
+
+	<h3>ANSI Primitives</h3>
+
+	<h4>MAP-User &#8594 MAP</h4>
+	<tt>{'MAP', 'REGNOT', request, Parms}</tt><br>
+	<tt>{'MAP', 'REGCANC', request, Parms}</tt><br>
+	...<br>
+
+	<h4>MAP &#8592 MAP-User</h4>
+	<tt>{'MAP', 'REGNOT', indication, Parms}</tt><br>
+	<tt>{'MAP', 'REGCANC', indication, Parms}</tt><br>
+	...<br>
+
+</body>
+</html>

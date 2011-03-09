@@ -1,0 +1,371 @@
+
+MAP-OperationPackages {ccitt (0) identified-organization (4) etsi (0)
+			mobileDomain (0) gsm-Network (1) modules (3 ) ??? (?)}
+
+OPERATION-PACKAGE ::= CLASS {
+&Both OPERATION OPTIONAL,
+&Consumer OPERATION OPTIONAL,
+&Supplier OPERATION OPTIONAL,
+&id OBJECT IDENTIFIER UNIQUE OPTIONAL }
+WITH SYNTAX {
+[ OPERATIONS &Both ]
+[ CONSUMER INVOKES &Supplier ]
+[ SUPPLIER INVOKES &Consumer ]
+[ ID &id ] }
+
+locationUpdatingPackage-v3 OPERATION-PACKAGE ::= {
+-- Supplier is HLR if Consumer is VLR
+CONSUMER INVOKES {
+updateLocation}
+SUPPLIER INVOKES {
+forwardCheckSs-Indication} }
+
+locationCancellationPackage-v3 OPERATION-PACKAGE ::= {
+-- Supplier is VLR or SGSN if Consumer is HLR
+CONSUMER INVOKES {
+cancelLocation} }
+
+roamingNumberEnquiryPackage-v3 OPERATION-PACKAGE ::= {
+-- Supplier is VLR if Consumer is HLR
+CONSUMER INVOKES {
+provideRoamingNumber} }
+
+infoRetrievalPackage-v3 OPERATION-PACKAGE ::= {
+-- Supplier is HLR if Consumer is VLR
+-- Supplier is HLR if Consumer is SGSN
+CONSUMER INVOKES {
+sendAuthenticationInfo} }
+
+infoRetrievalPackage-v2 OPERATION-PACKAGE ::= {
+-- Supplier is HLR if Consumer is VLR
+-- Supplier is HLR if Consumer is SGSN
+CONSUMER INVOKES {
+sendAuthenticationInfo} }
+
+infoRetrievalPackage-v1 OPERATION-PACKAGE ::= {
+-- Supplier is HLR or VLR if Consumer is VLR
+-- Supplier is HLR if Consumer is SGSN
+CONSUMER INVOKES {
+sendParameters} }
+
+interVlrInfoRetrievalPackage-v3 OPERATION-PACKAGE ::= {
+-- Supplier is VLR if Consumer is VLR
+CONSUMER INVOKES {
+sendIdentification} }
+
+interVlrInfoRetrievalPackage-v2 OPERATION-PACKAGE ::= {
+-- Supplier is VLR if Consumer is VLR
+CONSUMER INVOKES {
+sendIdentification} }
+
+imsiRetrievalPackage-v2 OPERATION-PACKAGE ::= {
+-- Supplier is HLR if Consumer is VLR
+CONSUMER INVOKES {
+sendIMSI} }
+
+callControlTransferPackage-v4 OPERATION-PACKAGE ::= {
+-- Supplier is GMSC if Consumer is VMSC
+CONSUMER INVOKES {
+resumeCallHandling} }
+
+secureTransportHandlingPackage-v3 OPERATION-PACKAGE ::= {
+CONSUMER INVOKES {
+secureTransportClass1 | -- to be used if the original operation is a
+-- TCAP class 1 operation
+secureTransportClass2 | -- to be used if the original operation is a
+-- TCAP class 2 operation
+secureTransportClass3 | -- to be used if the original operation is a
+-- TCAP class 3 operation
+secureTransportClass4} -- to be used if the original operation is a
+-- TCAP class 4 operation
+}
+
+interrogationPackage-v3 OPERATION-PACKAGE ::= {
+-- Supplier is HLR or NPLR if Consumer is MSC
+-- Supplier is HLR if Consumer is gsmSCF
+CONSUMER INVOKES {
+sendRoutingInfo} }
+
+handoverControlPackage-v3 OPERATION-PACKAGE ::= {
+-- Supplier is MSCB if Consumer is MSCA
+CONSUMER INVOKES {
+prepareHandover |
+forwardAccessSignalling}
+SUPPLIER INVOKES {
+sendEndSignal |
+processAccessSignalling |
+prepareSubsequentHandover} }
+
+handoverControlPackage-v1 OPERATION-PACKAGE ::= {
+-- Supplier is MSCB if Consumer is MSCA
+CONSUMER INVOKES {
+performHandover |
+forwardAccessSignalling |
+traceSubscriberActivity}
+SUPPLIER INVOKES {
+sendEndSignal |
+noteInternalHandover |
+processAccessSignalling |
+performSubsequentHandover} }
+
+subscriberDataMngtStandAlonePackage-v3 OPERATION-PACKAGE ::= {
+-- Supplier is VLR or SGSN if Consumer is HLR
+CONSUMER INVOKES {
+insertSubscriberData |
+deleteSubscriberData} }
+
+equipmentMngtPackage-v3 OPERATION-PACKAGE ::= {
+-- Supplier is EIR if Consumer is MSC
+-- Supplier is EIR if Consumer is SGSN
+CONSUMER INVOKES {
+checkIMEI} }
+
+subscriberDataMngtPackage-v3 OPERATION-PACKAGE ::= {
+-- Supplier is VLR or SGSN if Consumer is HLR
+CONSUMER INVOKES {
+insertSubscriberData} }
+
+resetPackage-v2 OPERATION-PACKAGE ::= {
+-- Supplier is VLR or SGSN if Consumer is HLR
+CONSUMER INVOKES {
+reset} }
+
+tracingStandAlonePackage-v3 OPERATION-PACKAGE ::= {
+-- Supplier is VLR or SGSN if Consumer is HLR
+CONSUMER INVOKES {
+activateTraceMode |
+deactivateTraceMode} }
+
+functionalSsPackage-v2 OPERATION-PACKAGE ::= {
+-- Supplier is HLR if Consumer is VLR
+CONSUMER INVOKES {
+registerSS |
+eraseSS |
+activateSS |
+deactivateSS |
+registerPassword |
+interrogateSS}
+SUPPLIER INVOKES {
+getPassword} }
+
+tracingPackage-v3 OPERATION-PACKAGE ::= {
+-- Supplier is VLR or SGSN if Consumer is HLR
+CONSUMER INVOKES {
+activateTraceMode} }
+
+bindingPackage-v1 OPERATION-PACKAGE ::= {
+-- Supplier is HLR if Consumer is VLR
+-- Supplier is gsmSCF if Consumer is HLR
+CONSUMER INVOKES {
+beginSubscriberActivity} }
+
+unstructuredSsPackage-v2 OPERATION-PACKAGE ::= {
+-- Supplier is HLR if Consumer is VLR
+-- Supplier is gsmSCF or HLR if Consumer is HLR
+CONSUMER INVOKES {
+processUnstructuredSS-Request}
+SUPPLIER INVOKES {
+unstructuredSS-Request |
+unstructuredSS-Notify} }
+
+unstructuredSsPackage-v1 OPERATION-PACKAGE ::= {
+-- Supplier is HLR if Consumer is VLR
+-- Supplier is gsmSCF if Consumer is HLR
+CONSUMER INVOKES {
+processUnstructuredSS-Data} }
+
+mo-ShortMsgRelayPackage-v3 OPERATION-PACKAGE ::= {
+-- Supplier is IWMSC if Consumer is MSC
+-- Supplier is IWMSC if Consumer is SGSN
+CONSUMER INVOKES {
+mo-forwardSM} }
+
+shortMsgRelayPackage-v2 OPERATION-PACKAGE ::= {
+-- Supplier is IWMSC if Consumer is MSC
+-- Supplier is MSC or SGSN if Consumer is GMSC
+-- Supplier is IWMSC if Consumer is SGSN
+CONSUMER INVOKES {
+forwardSM} }
+
+shortMsgGatewayPackage-v3 OPERATION-PACKAGE ::= {
+-- Supplier is HLR if Consumer is GMSC
+CONSUMER INVOKES {
+sendRoutingInfoForSM |
+reportSM-DeliveryStatus}
+SUPPLIER INVOKES {
+informServiceCentre} }
+
+shortMsgGatewayPackage-v1 OPERATION-PACKAGE ::= {
+-- Supplier is HLR if Consumer is GMSC
+CONSUMER INVOKES {
+sendRoutingInfoForSM |
+reportSMDeliveryStatus} }
+
+mt-ShortMsgRelayPackage-v3 OPERATION-PACKAGE ::= {
+-- Supplier is MSC or SGSN if Consumer is GMSC
+CONSUMER INVOKES {
+mt-forwardSM} }
+
+mwdMngtPackage-v3 OPERATION-PACKAGE ::= {
+-- Supplier is HLR if Consumer is SGSN
+-- Supplier is HLR if Consumer is VLR
+CONSUMER INVOKES {
+readyForSM} }
+
+mwdMngtPackage-v1 OPERATION-PACKAGE ::= {
+-- Supplier is HLR if Consumer is VLR
+CONSUMER INVOKES {
+noteSubscriberPresent} }
+
+alertingPackage-v2 OPERATION-PACKAGE ::= {
+-- Supplier is IWMSC if Consumer is HLR
+CONSUMER INVOKES {
+alertServiceCentre} }
+
+alertingPackage-v1 OPERATION-PACKAGE ::= {
+-- Supplier is IWMSC if Consumer is HLR
+CONSUMER INVOKES {
+alertServiceCentreWithoutResult} }
+
+dataRestorationPackage-v3 OPERATION-PACKAGE ::= {
+-- Supplier is HLR if Consumer is VLR
+CONSUMER INVOKES {
+restoreData} }
+
+purgingPackage-v3 OPERATION-PACKAGE ::= {
+-- Supplier is HLR if Consumer is VLR
+-- Supplier is HLR if Consumer is SGSN
+CONSUMER INVOKES {
+purgeMS} }
+
+subscriberInformationEnquiryPackage-v3 OPERATION-PACKAGE ::= {
+-- Supplier is VLR or SGSN if Consumer is HLR
+CONSUMER INVOKES {
+provideSubscriberInfo} }
+
+anyTimeInformationEnquiryPackage-v3 OPERATION-PACKAGE ::= {
+-- Supplier is HLR or GMLC if Consumer is gsmSCF
+CONSUMER INVOKES {
+anyTimeInterrogation} }
+
+groupCallControlPackage-v3 OPERATION-PACKAGE ::= {
+-- Supplier is relay MSC if Consumer is anchor MSC
+CONSUMER INVOKES {
+prepareGroupCall |
+forwardGroupCallSignalling}
+SUPPLIER INVOKES {
+sendGroupCallEndSignal |
+processGroupCallSignalling} }
+
+provideSIWFSNumberPackage-v3 OPERATION-PACKAGE ::= {
+-- Supplier is SIWF if Consumer is VMSC
+CONSUMER INVOKES {
+provideSIWFSNumber} }
+
+siwfs-SignallingModifyPackage-v3 OPERATION-PACKAGE ::= {
+-- Supplier is SIWF if Consumer is VMSC
+CONSUMER INVOKES {
+siwfs-SignallingModify} }
+
+gprsLocationUpdatingPackage-v3 OPERATION-PACKAGE ::= {
+-- Supplier is HLR if Consumer is SGSN
+CONSUMER INVOKES {
+updateGprsLocation} }
+
+gprsInterrogationPackage-v4 OPERATION-PACKAGE ::= {
+-- Supplier is HLR if Consumer is GGSN
+CONSUMER INVOKES {
+sendRoutingInfoForGprs} }
+
+gprsInterrogationPackage-v3 OPERATION-PACKAGE ::= {
+-- Supplier is HLR if Consumer is GGSN
+CONSUMER INVOKES {
+sendRoutingInfoForGprs} }
+
+failureReportingPackage-v3 OPERATION-PACKAGE ::= {
+-- Supplier is HLR if Consumer is GGSN
+CONSUMER INVOKES {
+failureReport} }
+
+gprsNotifyingPackage-v3 OPERATION-PACKAGE ::= {
+-- Supplier is GGSN if Consumer is HLR
+CONSUMER INVOKES {
+noteMsPresentForGprs} }
+
+ss-InvocationNotificationPackage-v3 OPERATION-PACKAGE ::= {
+-- Supplier is gsmSCF if Consumer is MSC
+-- Supplier is gsmSCF if Consumer is HLR
+CONSUMER INVOKES {
+ss-InvocationNotification} }
+
+setReportingStatePackage-v3 OPERATION-PACKAGE ::= {
+-- Supplier is VLR if Consumer is HLR
+CONSUMER INVOKES {
+setReportingState} }
+
+statusReportPackage-v3 OPERATION-PACKAGE ::= {
+-- Supplier is HLR if Consumer is VLR
+CONSUMER INVOKES {
+statusReport} }
+
+remoteUserFreePackage-v3 OPERATION-PACKAGE ::= {
+-- Supplier is VLR if Consumer is HLR
+CONSUMER INVOKES {
+remoteUserFree} }
+
+callCompletionPackage-v3 OPERATION-PACKAGE ::= {
+-- Supplier is HLR if Consumer is VLR
+CONSUMER INVOKES {
+registerCC-Entry |
+eraseCC-Entry} }
+
+locationSvcGatewayPackage-v3 OPERATION-PACKAGE ::= {
+-- Supplier is HLR if Consumer is GMLC
+CONSUMER INVOKES {
+sendRoutingInfoForLCS} }
+
+locationSvcEnquiryPackage-v3 OPERATION-PACKAGE ::= {
+-- Supplier is MSC or SGSN if Consumer is GMLC
+CONSUMER INVOKES {
+provideSubscriberLocation} }
+
+locationSvcReportingPackage-v3 OPERATION-PACKAGE ::= {
+-- Supplier is GMLC if Consumer is MSC
+-- Supplier is GMLC if Consumer is SGSN
+CONSUMER INVOKES {
+subscriberLocationReport} }
+
+ist-AlertingPackage-v3 OPERATION-PACKAGE ::= {
+-- Supplier is HLR if Consumer is VMSC
+-- Supplier is HLR if Consumer is GMSC
+CONSUMER INVOKES {
+istAlert} }
+
+serviceTerminationPackage-v3 OPERATION-PACKAGE ::= {
+-- Supplier is VMSC or GMSC if Consumer is HLR
+CONSUMER INVOKES {
+istCommand} }
+
+mm-EventReportingPackage-v3 OPERATION-PACKAGE ::= {
+-- Supplier is gsmSCF if Consumer is VLR
+CONSUMER INVOKES {
+noteMM-Event} }
+
+anyTimeInformationHandlingPackage-v3 OPERATION-PACKAGE ::= {
+-- Supplier is HLR if Consumer is gsmSCF
+CONSUMER INVOKES {
+anyTimeSubscriptionInterrogation |
+anyTimeModification} }
+
+subscriberDataModificationNotificationPackage-v3 OPERATION-PACKAGE ::= {
+-- Supplier is gsmSCF if Consumer is HLR
+CONSUMER INVOKES {
+noteSubscriberDataModified} }
+
+authenticationFailureReportPackage-v3 OPERATION-PACKAGE ::= {
+-- Supplier is HLR if Consumer is VLR
+-- Supplier is HLR if Consumer is SGSN
+CONSUMER INVOKES {
+authenticationFailureReport} }
+
+
