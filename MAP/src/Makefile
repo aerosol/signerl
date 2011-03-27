@@ -31,6 +31,6 @@ ansi:
 .PHONY:	clean
 clean:
 	- rm -f $(BEAMS)
-	cd gsm && $(MAKE) $@
-	cd ansi && $(MAKE) $@
+	cd GSM && $(MAKE) $@
+	cd ANSI && $(MAKE) $@
 
