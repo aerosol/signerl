@@ -1,5 +1,5 @@
 
 all:
-	cd gsm && $(MAKE)
-	cd ansi && $(MAKE)
+	cd GSM && $(MAKE)
+	#cd ansi && $(MAKE)
 

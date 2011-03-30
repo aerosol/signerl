@@ -67,8 +67,8 @@
 -include("sccp.hrl").
 %% record definitions for TCAP messages
 %-include("TCAPMessages.hrl").
-%-include("UnidialoguePDUs.hrl").
-%-include("DialoguePDUs.hrl").
+-include("UnidialoguePDUs.hrl").
+-include("DialoguePDUs.hrl").
 
 %% the dialogue_fsm state data
 -record(state, {usap, tco, supid, cco, otid, did, parms, appContextMode}).

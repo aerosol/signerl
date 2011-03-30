@@ -1,11 +1,11 @@
 
 .PHONY:	all
 all:
-	cd itu && $(MAKE)
-	cd ansi && $(MAKE)
+	cd ITU && $(MAKE)
+	cd ANSI && $(MAKE)
 
 .PHONY:	clean
 clean:
-	cd itu && $(MAKE) $@
-	cd ansi && $(MAKE) $@
+	cd ITU && $(MAKE) $@
+	cd ANSI && $(MAKE) $@
 

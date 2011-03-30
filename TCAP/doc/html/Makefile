@@ -7,7 +7,7 @@ SRC		= ../../src
 %.html:${SRC}/%.erl
 	${ERL} -noshell -run edoc_run file '"$<"' '[{dir,"."}]' -s init stop
 
-%.html:${SRC}/itu/%.erl
+%.html:${SRC}/ITU/%.erl
 	${ERL} -noshell -run edoc_run file '"$<"' '[{dir,"."}]' -s init stop
 
 DOCS		= tcap.html tcap_tco_server.html

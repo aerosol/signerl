@@ -26,15 +26,15 @@ all:	$(BEAMS) itu ansi
 
 .PHONY:	itu
 itu:
-	cd itu && $(MAKE)
+	cd ITU && $(MAKE)
 
 .PHONY:	ansi
 ansi:
-	cd ansi && $(MAKE)
+	cd ANSI && $(MAKE)
 
 .PHONY:	clean
 clean:
 	- rm -f $(BEAMS)
-	cd itu && $(MAKE) $@
-	cd ansi && $(MAKE) $@
+	cd ITU && $(MAKE) $@
+	cd ANSI && $(MAKE) $@
 

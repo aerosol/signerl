@@ -53,7 +53,8 @@
 -behaviour(gen_fsm).
 
 %% call backs needed for gen_fsm behaviour
--export([init/1, handle_event/3, handle_info/3, terminate/3, code_change/4]).
+%-export([init/1, handle_event/3, handle_info/3, terminate/3, code_change/4]).
+-export([handle_info/3, terminate/3, code_change/4]).
 
 %% invocation_fsm state callbacks 
 -export([]).
@@ -76,8 +77,8 @@
 
 %% handle any other message
 handle_info(Info, StateName, State) ->
-	error_logger:format("~w (~w) received unexpected message: ~w~n", [?Module, self(), Event]),
-	{next_state, StateName, State};
+	error_logger:format("~w (~w) received unexpected message: ~w~n", [?MODULE, self(), Info]),
+	{next_state, StateName, State}.
 
 %% handle a shutdown request
 terminate(_Reason, _StateName, State) -> ok.
