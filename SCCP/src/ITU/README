@@ -1,0 +1,15 @@
+
+This directory contains the erlang source modules for an implementation
+of the ITU-T version of the Signalling Connection Control Part (SCCP).
+See ITU-T recommendations Q.711-Q.715 for the specification this
+implementation is derived from.
+
+The basic structure of the SCCP appears in Figure 1/Q.714 - SCCP overview.
+It is divided into four functional blocks (ref: Q.714 clause 1.4):
+
+	SCCP connection-oriented control (SCOC)
+	SCCP connectionless control (SCLC)
+	SCCP management (SCMG)
+	SCCP routing control (SCRC)
+
+
