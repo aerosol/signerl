@@ -51,7 +51,7 @@
 %% our published API functions
 -export([start/0, stop/0]).
 -export([open/3, close/1]).
--export([start_dialogue/3]).
+%-export([start_dialogue/3]).
 
 
 %% @type map_options(). MAP layer options

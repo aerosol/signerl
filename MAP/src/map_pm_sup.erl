@@ -42,7 +42,7 @@
 %%%
 %%% @private
          
--module(tcap_pm_sup).
+-module(map_pm_sup).
 -copyright('Copyright (c) 2005 Motivity Telecom Inc.').
 -author('vances@motivity.ca').
 -vsn('$Revision: 1.1 $').

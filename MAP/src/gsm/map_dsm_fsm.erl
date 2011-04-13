@@ -56,11 +56,10 @@
 		start_timer/2, cancel_timer/1]).
 
 %% export the gen_fsm state handler call backs
--export([statename/2, statename/3]).
+%-export([statename/2, statename/3]).
 
 %% export the gen_fsm common call backs
--export([init/1, handle_event/3, handle_sync_event/4,
-		handle_info/3, terminate/3, code_change/4]).
+-export([init/1, terminate/3, code_change/4]).
 
 %% define what callbacks users must export
 %%
@@ -71,18 +70,18 @@ behaviour_info(Other) ->
 	gen_fsm:behaviour_info(Other).
 
 %% include record definitions for TC service primitives
--include("tcap.hrl").
+-include_lib("tcap/include/tcap.hrl").
 %% include record definitions for MAP service primitives
--include("map.hrl").
+-include_lib("map/include/map.hrl").
 
 %% StateData record definition
--record(state, {module, ext_statename, ext_statedata
+-record(state, {module, ext_statename, ext_statedata,
 		applicaton_context, requests = [],
 		% @reference 3GPP TS 2902 Figure 15.6/3a: Process Secure_MAP_DSM (sheet 1) DCL
 		secure_transport_required, components_present, ac_name_unchanged, 
 		encapsulated_ac_name_unchanged, ac_included, ac_supported, 
 		invoke_id_active, last_component, operation_exists,
-		alternative_name_exists, user_info_included, op_code).
+		alternative_name_exists, user_info_included, op_code}).
 
 
 %%----------------------------------------------------------------------
@@ -181,27 +180,27 @@ init([Module, Args]) ->
 %
 idle({'MAP', 'OPEN', request, Open} = Event, StateData) ->
 	AC = Open#'MAP-OPEN'.application_context_name,
-	AC_PDU = Open#'MAP-OPEN'.specific_information),
+	AC_PDU = Open#'MAP-OPEN'.specific_information,
 	% secure transport required?  -- according to the AC and the identity of responder
 	case secure_transport_required(AC, AC_PDU) of
 		% true
 		true ->
 			% set AC: Secure_Transport
 			% build encapsulated AC PDU
-			NewStateData = build_encapsulated_ac_pdu(AC, AC_PDU)},
+			NewStateData = build_encapsulated_ac_pdu(AC, AC_PDU),
 			{next_state, wait_for_user_requests, NewStateData#state{secure_transport_required = true}};
 		% false
 		false ->
 			% store AC and user data
 			NewStateData = StateData#state{application_context = AC, user_data = AC_PDU},
-			{next_state, wait_for_user_requests, StateData#state{secure_transport_required = false}};
+			{next_state, wait_for_user_requests, StateData#state{secure_transport_required = false}}
 	end;
 % @reference 3GPP TS 29.002 Figure 15.6/3j: Process_Secure_MAP_DSM (sheet 10)
-idle({'TC', 'BEGIN', indication, #'TR-BEGIN'{userInfo = undefined, componentsPresent = true}, StateData) ->
+idle({'TC', 'BEGIN', indication, #'TR-BEGIN'{userInfo = undefined, componentsPresent = true}}, StateData) ->
 	% AC included? (false)
 	% components present? (true)
 	{next_state, wait_for_init_data, StateData};
-idle({'TC', 'BEGIN', indication, Begin#'TR-BEGIN'{userInfo = AC}, StateData) ->
+idle({'TC', 'BEGIN', indication, Begin#'TR-BEGIN'{userInfo = AC}}, StateData) ->
 	% AC included? (true)
 	% AC version = 1? (true)
 	% TODO:  the rest of it!
@@ -250,9 +249,9 @@ wait_for_user_requests({'MAP', 'U-ABORT', request, Parms} = Event, StateData) ->
 		% Terminated_VIA_Intern2
 	{next_state, idle, StateData};
 % any MAP specific request primitive
-wait_for_user_requests({'MAP', MapSpecificRequest, request, Parms} = Event, StateData) ->
+%wait_for_user_requests({'MAP', MapSpecificRequest, request, Parms} = Event, StateData) ->
 	% secure transport required?
-	case StateData#state.secure_transport_required of
+%	case StateData#state.secure_transport_required of
 	% true
 		% store request
 		% spawn Secure_Requesting_MAP_SSM
@@ -260,7 +259,7 @@ wait_for_user_requests({'MAP', MapSpecificRequest, request, Parms} = Event, Stat
 	% false
 		% spawn Requesting_MAP_SSM
 		% Service_Invoked_VIA_Intern2
-	{next_state, wait_for_user_requests, StateData};
+%	{next_state, wait_for_user_requests, StateData};
 % forward unrecognized events to user callback module 
 wait_for_user_requests(Event, StateData) ->
 	Module = StateData#state.module,
@@ -639,7 +638,7 @@ handle_info(Event, Statename, StateData) ->
 	Module = StateData#state.module,
 	ExtStateName = StateData#state.ext_statename,
 	ExtStateData = StateData#state.ext_statedata,
-	case Module:handle_info(Event, ExtStateName, StateData#state.ext_statedata of
+	case Module:handle_info(Event, ExtStateName, StateData#state.ext_statedata) of
 		{next_state, NextExtStateName, NewExtStateData} ->
 			NewStateData = StateData#state{ext_statename = NextExtStateName, ext_statedata = NewExtStateData},
 			{next_state, StateName, NewStateData};
