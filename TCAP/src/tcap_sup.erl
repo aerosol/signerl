@@ -64,4 +64,4 @@ init(_StartArgs) ->
 	StartMod = tcap_sap_sup,
 	StartFunc = {supervisor, start_link, [StartMod]},
 	ChildSpec = {sap_sup, StartFunc, permanent, infinity, supervisor, [StartMod]},
-	{ok,{{simple_one_for_one, 10, 60}, ChildSpec}}.
+	{ok,{{simple_one_for_one, 10, 60}, [ChildSpec]}}.
