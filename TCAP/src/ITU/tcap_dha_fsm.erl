@@ -67,7 +67,12 @@
 -include("sccp.hrl").
 %% record definitions for TCAP messages
 %-include("TCAPMessages.hrl").
--include("UnidialoguePDUs.hrl").
+%-include("UnidialoguePDUs.hrl").
+%% Redefinition of 'EXTERNAL' in UnidialoguePDUs results name clashing
+-record('AUDT-apdu',{
+'protocol-version' = asn1_DEFAULT, 'application-context-name', 'user-information' = asn1_NOVALUE}).
+-define('uniDialogue-as-id', {0,0,17,773,1,2,1}).
+
 -include("DialoguePDUs.hrl").
 
 %% the dialogue_fsm state data
@@ -200,8 +205,14 @@ idle({'TR', 'BEGIN', indication, BeginParms}, State) when is_record(BeginParms, 
 			ABRT = 'DialoguePDUs':encode('ABRT-apdu', #'ABRT-apdu'{'abort-source' = 'dialogue-service-provider'}),
 			%% Discard components
 			%% TR-U-ABORT request to TSL
-			TrParms = {transactionID = BeginParms#'TR-BEGIN'.transactionID,
-					userData = #'TR-user-data'{dialoguePortion = ABRT}},
+                        %% Fixed:
+                        %% This was a strange construct like this:
+			%% TrParms = {transactionID = BeginParms#'TR-BEGIN'.transactionID,
+		        %%	userData = #'TR-user-data'{dialoguePortion = ABRT}},
+                        %% Causing ./tcap_dha_fsm.erl:208: Warning: this clause cannot match because of different types/sizes
+                        %%  and same for no_version1 branch
+			TrParms = {_TransactionID = BeginParms#'TR-BEGIN'.transactionID,
+					_UserData = #'TR-user-data'{dialoguePortion = ABRT}},
 			NewState = State#state{otid = BeginParms#'TR-BEGIN'.transactionID, parms = TrParms},
 			gen_fsm:send_event(NewState#state.tco, {'TR', 'U-ABORT', request, TrParms}),
 			%% Dialogue terminated to CHA
@@ -213,11 +224,11 @@ idle({'TR', 'BEGIN', indication, BeginParms}, State) when is_record(BeginParms, 
 			AARE = 'DialoguePDUs':encode('AARE-apdu', #'AARE-apdu'{
 					'protocol-version' = version1,
 					'application-context-name' = DialoguePortion#'AARQ-apdu'.'application-context-name',
-					result = reject-permanent,
+					result = 'reject-permanent',
 					'result-source-diagnostic' = {'dialogue-service-provider', 'no-common-dialogue-portion'}}),
 			%% Discard components
 			%% TR-P-ABORT request to TSL
-			TrParms = {transactionID = BeginParms#'TR-P-ABORT'.transactionID, pAbort = AARE},
+			TrParms = {_TransactionID = BeginParms#'TR-P-ABORT'.transactionID, pAbort = AARE},
 			NewState = State#state{otid = BeginParms#'TR-BEGIN'.transactionID,
 					appContextMode = DialoguePortion#'AARQ-apdu'.'application-context-name',
 					parms = TrParms},
@@ -788,8 +799,10 @@ extract_dialogue_portion(UserData, undefined) when is_record(UserData, 'TR-user-
 		UserData#'TR-user-data'.dialoguePortion /= undefined ->
 		%% Dialogue portion included? (yes)  AC mode set? (no)
 	abort;
-extract_dialogue_portion(UserData, _AppContextName) when not is_record(UserData, 'TR-user-data'),
-		UserData#'TR-user-data'.dialoguePortion == undefined ->
+extract_dialogue_portion(UserData, _AppContextName)
+        when not is_record(UserData, 'TR-user-data') ->
+                %% This makes no sense - since UserData is NOT 'TR-user-data'
+		%UserData#'TR-user-data'.dialoguePortion == undefined ->
 		%% Dialogue portion included? (no)  AC mode set? (yes)
 	abort;
 extract_dialogue_portion(UserData, _AppContextName) when is_record(UserData, 'TR-user-data'),

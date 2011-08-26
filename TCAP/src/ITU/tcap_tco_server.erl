@@ -159,7 +159,7 @@
 
 % export the gen_server call backs
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
-		terminate/2]).
+		terminate/2, code_change/3]).
 
 % behaviour modules must export this function
 -export([behaviour_info/1]).
@@ -205,7 +205,7 @@ init([Sup, Module, Args]) ->
 %% @hidden
 %%
 % assign a new dialogue ID
-handle_call(dialogueID, From, State) ->
+handle_call(dialogueID, _From, State) ->
 	{reply, new_tid(), State};
 % shutdown the server
 handle_call(stop, _From, State) ->
@@ -594,7 +594,8 @@ terminate(Reason, State) ->
 	Module:terminate(Reason, State#state.ext_state).
 
 %% @hidden
-code_change(OldVersion, statename, State, Extra) ->
+%% removed statename atom arg 2
+code_change(OldVersion, State, Extra) ->
 	Module = State#state.module,
 	case Module:code_change(OldVersion, State#state.ext_state, Extra) of
 		{ok, ExtState} ->
