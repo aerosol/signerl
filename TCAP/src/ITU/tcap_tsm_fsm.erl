@@ -96,7 +96,7 @@ idle({'BEGIN', received, SccpParms}, State)
 	%% Start a Dialogue Handler (DHA)
 	SupId = list_to_atom("dha_sup_" ++ integer_to_list(State#state.localTID)),
 	StartFunc = {supervisor, start_link,
-			[dialogue_sup, [{State#state.usap, State#state.localTID, self()}]]},
+			[tcap_dialogue_sup, [{State#state.usap, State#state.localTID, self()}]]},
 	ChildSpec = {SupId, StartFunc, permanent, infinity, supervisor, [dialogue_sup]},
 	{ok, DHA} = supervisor:start_child(State#state.supervisor, ChildSpec),
 	QOS = {SccpParms#'N-UNITDATA'.sequenceControl, SccpParms#'N-UNITDATA'.returnOption},
