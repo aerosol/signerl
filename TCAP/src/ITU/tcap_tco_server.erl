@@ -487,15 +487,23 @@ handle_cast({'TR', 'UNI', request, UniParams}, State)
 	{SequenceControl, ReturnOption, Importance} = UniParams#'TR-UNI'.qos,
 	DialoguePortion = (UniParams#'TR-UNI'.userData)#'TR-user-data'.dialoguePortion,
 	ComponentPortion = (UniParams#'TR-UNI'.userData)#'TR-user-data'.componentPortion,
-	TPDU = 'TR':encode('TCMessage', {unidirectional, #'Unidirectional'{
-			dialoguePortion = DialoguePortion, components = ComponentPortion}}),
-	SccpParams = #'N-UNITDATA'{calledAddress = UniParams#'TR-UNI'.destAddress,
-			callingAddress =  UniParams#'TR-UNI'.origAddress,
-			sequenceControl = SequenceControl, returnOption = ReturnOption,
-			importance = Importance, userData = TPDU},
-	Module = State#state.module,
-	Module:send_primitive({'N', 'UNITDATA', request, SccpParams}, State#state.ext_state),
-	{noreply, State};
+	case 'TR':encode('TCMessage', {unidirectional, #'Unidirectional'{
+			 dialoguePortion = DialoguePortion, components = ComponentPortion}}) of
+		{ok, TPDU} ->
+			TpduBin = iolist_to_binary(TPDU),
+			SccpParams = #'N-UNITDATA'{calledAddress = UniParams#'TR-UNI'.destAddress,
+					callingAddress =  UniParams#'TR-UNI'.origAddress,
+					sequenceControl = SequenceControl, returnOption = ReturnOption,
+					importance = Importance, userData = TpduBin},
+			Module = State#state.module,
+			Module:send_primitive({'N', 'UNITDATA', request, SccpParams}, State#state.ext_state),
+			{noreply, State};
+		{error, Err} ->
+			error_logger:error_report(["Error generating ASN1", {error, Err},
+					{dialogue_portion, DialoguePortion},
+					{components, ComponentPortion}]),
+			{noreply, State}
+	end;
 handle_cast({'TR', 'BEGIN', request, BeginParams}, State) 
 		when is_record(BeginParams, 'TR-BEGIN') ->
 	% Create a Transaction State Machine (TSM)
