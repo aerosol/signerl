@@ -84,9 +84,9 @@ init({USAP, DialogueID, TCO, Supervisor}) ->
 init({USAP, DialogueID, TCO, SupId, Supervisor}) ->
 	%% Start a Component Coordinator (CCO) process
 	ChildName = list_to_atom("cco_sup_" ++ integer_to_list(DialogueID)),
-	StartFunc = {supervisor, start_link, [component_coordinator_sup, [USAP, DialogueID]]},
+	StartFunc = {supervisor, start_link, [tcap_components_sup, [USAP, DialogueID]]},
 	ChildSpec = {ChildName, StartFunc, permanent, infinity,
-			supervisor, [component_coordinator_sup]},
+			supervisor, [tcap_components_sup]},
 	{ok, CCO} = supervisor:start_child(Supervisor, ChildSpec),
 	process_flag(trap_exit, true),
 	{ok, idle, #state{usap = USAP, did = DialogueID,
