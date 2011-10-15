@@ -124,7 +124,7 @@ idle({'BEGIN', transaction, BeginParms}, State)
 	Begin = #'Begin'{otid = State#state.localTID, dialoguePortion = DialoguePortion,
 			components = ComponentPortion},
 	%% Assemble TR-portion of BEGIN message
-	TPDU = list_to_binary('TR':encode('TCMessage', {'begin', Begin})),
+	{ok, TPDU} = 'TR':encode('TCMessage', {'begin', Begin}),
 	{SequenceControl, ReturnOption} = BeginParms#'TR-BEGIN'.qos,
 	SccpParms = #'N-UNITDATA'{calledAddress = BeginParms#'TR-BEGIN'.destAddress,
 			callingAddress = BeginParms#'TR-BEGIN'.origAddress,
@@ -154,7 +154,7 @@ initiation_received({'CONTINUE', transaction, ContParms}, State)
 	ComponentPortion = (ContParms#'TR-CONTINUE'.userData)#'TR-user-data'.componentPortion,
 	Continue = #'Continue'{otid = State#state.localTID, dialoguePortion = DialoguePortion, components = ComponentPortion},
 	%% Assemble TR-portion of CONTINUE message
-	TPDU = list_to_binary('TR':encode('TCMessage', {continue, Continue})),
+	{ok, TPDU} = 'TR':encode('TCMessage', {continue, Continue}),
 	{SequenceControl, ReturnOption} = ContParms#'TR-CONTINUE'.qos,
 	SccpParms = #'N-UNITDATA'{calledAddress = State#state.remote_address,
 			callingAddress = NewState#state.local_address,
@@ -176,7 +176,7 @@ initiation_received({'END', transaction, EndParms}, State)
 	ComponentPortion = (EndParms#'TR-END'.userData)#'TR-user-data'.componentPortion,
 	End = #'End'{dialoguePortion = DialoguePortion, components = ComponentPortion},
 	%% Assemble TR-portion of END message
-	TPDU = list_to_binary('TR':encode('TCMessage', {'end', End})),
+	{ok, TPDU} = 'TR':encode('TCMessage', {'end', End}),
 	{SequenceControl, ReturnOption} = EndParms#'TR-END'.qos,
 	SccpParms = #'N-UNITDATA'{calledAddress = State#state.remote_address,
 			callingAddress = State#state.local_address,
@@ -192,7 +192,7 @@ initiation_received({'ABORT', transaction, AbortParms}, State)
 	Cause = (AbortParms#'TR-U-ABORT'.userData)#'TR-user-data'.dialoguePortion,
 	Abort = #'Abort'{reason = {'u-abortCause', Cause}},
 	%% Assemble TR-portion of ABORT message
-	TPDU = list_to_binary('TR':encode('TCMessage', {abort, Abort})),
+	{ok, TPDU} = 'TR':encode('TCMessage', {abort, Abort}),
 	{SequenceControl, ReturnOption} = AbortParms#'TR-U-ABORT'.qos,
 	SccpParms = #'N-UNITDATA'{calledAddress = State#state.remote_address,
 			callingAddress = State#state.local_address,
@@ -306,7 +306,7 @@ active({'CONTINUE', transaction, ContParms}, State)
 	ComponentPortion = (ContParms#'TR-CONTINUE'.userData)#'TR-user-data'.componentPortion,
 	Continue = #'Continue'{dialoguePortion = DialoguePortion, components = ComponentPortion},
 	%% Assemble TR-portion of CONTINUE message
-	TPDU = list_to_binary('TR':encode('TCMessage', {continue, Continue})),
+	{ok, TPDU} = 'TR':encode('TCMessage', {continue, Continue}),
 	{SequenceControl, ReturnOption} = ContParms#'TR-CONTINUE'.qos,
 	SccpParms = #'N-UNITDATA'{calledAddress = State#state.remote_address,
 			callingAddress = State#state.local_address,
@@ -343,7 +343,7 @@ active({'END', transaction, EndParms}, State)
 	ComponentPortion = (EndParms#'TR-END'.userData)#'TR-user-data'.componentPortion,
 	End = #'End'{dialoguePortion = DialoguePortion, components = ComponentPortion},
 	%% Assemble TR-portion of END message
-	TPDU = list_to_binary('TR':encode('TCMessage', {'end', End})),
+	{ok, TPDU} = 'TR':encode('TCMessage', {'end', End}),
 	{SequenceControl, ReturnOption} = EndParms#'TR-END'.qos,
 	SccpParms = #'N-UNITDATA'{calledAddress = State#state.remote_address,
 			callingAddress = State#state.local_address,
@@ -390,7 +390,7 @@ active({'ABORT', transaction, AbortParms}, State)
 	Cause = (AbortParms#'TR-U-ABORT'.userData)#'TR-user-data'.dialoguePortion,
 	Abort = #'Abort'{reason = {'u-abortCause', Cause}},
 	%% Assemble TR-portion of ABORT message
-	TPDU = list_to_binary('TR':encode('TCMessage', {abort, Abort})),
+	{ok, TPDU} = 'TR':encode('TCMessage', {abort, Abort}),
 	{SequenceControl, ReturnOption} = AbortParms#'TR-U-ABORT'.qos,
 	SccpParms = #'N-UNITDATA'{calledAddress = State#state.remote_address,
 			callingAddress = State#state.local_address,
