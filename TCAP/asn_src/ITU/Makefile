@@ -17,7 +17,7 @@ $(EBIN)/%.beam:%.erl
 default:	all
 
 .PHONY:	all
-all:		q773 q755 q775
+all:		q773 q755 q775 simple
 
 .PHONY:	q773
 q773:		$(EBIN)/TR.beam $(EBIN)/TCAPMessages.beam \
@@ -33,6 +33,9 @@ TC-Testing-User.erl:		TC-TMP.erl Remote-Operations-Information-Objects.erl
 
 .PHONY:	q775
 q775:		$(EBIN)/TCAP-Examples.beam $(EBIN)/TCAP-Tools.beam 
+
+.PHONY: simple
+simple: 	$(EBIN)/SimpleTCAP.beam
 
 TCAP-Examples.erl:	Remote-Operations-Information-Objects.erl
 TCAP-Tools.erl:		Remote-Operations-Information-Objects.erl
