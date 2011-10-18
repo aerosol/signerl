@@ -62,6 +62,7 @@
 %%
 start(normal, StartArgs) ->
 	ets:new(transaction, [named_table, public]),
+	ets:new(tcap_dha, [named_table, public]),
 	{ok, SupRef} = application:get_env(supref),
 	supervisor:start_link(SupRef, tcap_sup, StartArgs).
 

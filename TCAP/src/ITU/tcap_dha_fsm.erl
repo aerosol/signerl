@@ -61,6 +61,8 @@
 		wait_cont_components_active/2, wait_for_end_components/2,
 		initiation_sent/2, active/2]).
 
+-export([get_cco_pid/1]).
+
 %% record definitions for TR-User primitives
 -include("tcap.hrl").
 %% record definitions for N-User primitives
@@ -88,6 +90,7 @@ init({USAP, DialogueID, TCO, SupId, Supervisor}) ->
 	ChildSpec = {ChildName, StartFunc, permanent, infinity,
 			supervisor, [tcap_components_sup]},
 	{ok, CCO} = supervisor:start_child(Supervisor, ChildSpec),
+	ets:insert(tcap_dha, {DialogueID, self()}),
 	process_flag(trap_exit, true),
 	{ok, idle, #state{usap = USAP, did = DialogueID,
 			tco = TCO, supid = SupId, cco = CCO}}.
@@ -813,18 +816,27 @@ handle_event(_Event, StateName, StateData) ->
 	{next_state, StateName, StateData}.
 
 %% handle an event sent using gen_fsm:sync_send_all_state_event/2,3
+handle_sync_event(get_cco_pid, From, StateName, StateData)  ->
+	CCO = StateData#state.cco,
+	{reply, CCO, StateName, StateData};
 handle_sync_event(_Event, _From, StateName, StateData)  ->
 	{next_state, StateName, StateData}.
 
 %% handle a shutdown request
 terminate(_Reason, _StateName, State) when State#state.supid == undefined ->
 	%% we were started by TSM, no worries	
+	ets:delete(tcap_dha, State#state.did),
 	ok;
 terminate(_Reason, _StateName, State) ->
 	%% signal TCO so he can reap the ChildSpec of our supervisor
+	ets:delete(tcap_dha, State#state.did),
 	gen_server:cast(State#state.tco, {'dha-stopped', State#state.supid}).
 
 %% handle updating state data due to a code replacement
 code_change(_OldVsn, StateName, State, _Extra) ->
 	{ok, StateName, State}.
 
+
+% front-end function called by tcap_user to get CCO for given DHA
+get_cco_pid(DHA) when is_pid(DHA) ->
+	gen_fsm:sync_send_all_state_event(DHA, get_cco_pid).
