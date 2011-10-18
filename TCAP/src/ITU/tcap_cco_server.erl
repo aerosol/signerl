@@ -57,7 +57,7 @@
 
 -include("tcap.hrl").
 -include("TR.hrl").
--include("Remote-Operations-Generic-ROS-PDUs.hrl").
+-include("TC.hrl").
 
 -record(state, {supervisor, usap, dialogueID, components, dha, ism}).
 
