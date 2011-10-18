@@ -7,7 +7,7 @@
 -- parts and ignore the application-specific parameters/rsults of the
 -- respective operation.
 
-SimpleTCAP
+TC
 
 DEFINITIONS IMPLICIT TAGS
 
