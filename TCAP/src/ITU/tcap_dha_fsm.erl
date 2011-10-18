@@ -115,7 +115,7 @@ idle({'TC', 'UNI', request, UniParms}, State)
 			userData = #'TR-user-data'{dialoguePortion = DialoguePortion}},
 	NewState = State#state{parms = TrParms},
 	%% Request components to CHA
-	gen_fsm:send_event(NewState#state.cco, 'request-components'),
+	gen_server:cast(NewState#state.cco, 'request-components'),
 	%% Process components
 	{next_state, wait_for_uni_components, NewState};
 
@@ -143,7 +143,7 @@ idle({'TC', 'BEGIN', request, BeginParms}, State)
 			%% Set application context mode
 			appContextMode = BeginParms#'TC-BEGIN'.appContextName},
 	%% Request components to CHA
-	gen_fsm:send_event(NewState#state.cco, 'request-components'),
+	gen_server:cast(NewState#state.cco, 'request-components'),
 	%% Process components
 	{next_state, wait_for_begin_components, NewState};
 
@@ -181,14 +181,14 @@ idle({'TR', 'UNI', indication, UniParms}, State) when is_record(UniParms, 'TR-UN
 			%% Components to CHA
 			case ComponentsPresent of
 				true ->
-					gen_fsm:send_event(NewState#state.cco, {components, Components});
+					gen_server:cast(NewState#state.cco, {components, Components});
 				false ->
 					ok       % should never happen
 			end,
 			%% TC-UNI indication to TCU
 			gen_fsm:send_event(NewState#state.usap, {'TC', 'UNI', indication, NewTcParms}),
 			%% Dialogue terminated to CHA
-			gen_fsm:send_event(NewState#state.cco, 'dialogue-terminated'),
+			gen_server:cast(NewState#state.cco, 'dialogue-terminated'),
 			%% Free dialogue ID
 			{stop, normal, NewState}
 	end;
@@ -208,7 +208,7 @@ idle({'TR', 'BEGIN', indication, BeginParms}, State) when is_record(BeginParms, 
 			NewState = State#state{otid = BeginParms#'TR-BEGIN'.transactionID, parms = TrParms},
 			gen_fsm:send_event(NewState#state.tco, {'TR', 'U-ABORT', request, TrParms}),
 			%% Dialogue terminated to CHA
-			gen_fsm:send_event(NewState#state.cco, 'dialogue-terminated'),
+			gen_server:cast(NewState#state.cco, 'dialogue-terminated'),
 			{stop, normal, NewState};
 		no_version1 ->                     %% Is version 1 supported? (no)
 			DialoguePortion = (BeginParms#'TR-BEGIN'.userData)#'TR-user-data'.dialoguePortion,
@@ -226,7 +226,7 @@ idle({'TR', 'BEGIN', indication, BeginParms}, State) when is_record(BeginParms, 
 					parms = TrParms},
 			gen_fsm:send_event(NewState#state.tco, {'TR', 'P-ABORT', request, TrParms}),
 			%% Dialogue terminated to CHA
-			gen_fsm:send_event(NewState#state.cco, 'dialogue-terminated'),
+			gen_server:cast(NewState#state.cco, 'dialogue-terminated'),
 			{stop, normal, NewState};
 		TcParms when is_record(TcParms, 'TC-BEGIN') ->
 			if
@@ -255,7 +255,7 @@ idle({'TR', 'BEGIN', indication, BeginParms}, State) when is_record(BeginParms, 
 			case ComponentsPresent of
 				true ->
 					%% Components to CHA
-					gen_fsm:send_event(NewState#state.cco, {components, Components});
+					gen_server:cast(NewState#state.cco, {components, Components});
 				false ->
 					ok
 			end,
@@ -298,7 +298,7 @@ initiation_received({'TC', 'END', request, EndParms}, State) when is_record(EndP
 			NewState = State#state{parms = TrParms},
 			gen_fsm:send_event(NewState#state.tco, {'TR', 'END', request, TrParms}),
 			%% Dialogue terminated to CHA
-			gen_fsm:send_event(NewState#state.cco, 'dialogue-terminated'),
+			gen_server:cast(NewState#state.cco, 'dialogue-terminated'),
 			%% Free dialogue ID
 			{stop, normal, NewState};
 		basic ->
@@ -320,7 +320,7 @@ initiation_received({'TC', 'END', request, EndParms}, State) when is_record(EndP
 					NewState = State
 			end,
 			%% Request components to CHA
-			gen_fsm:send_event(NewState#state.cco, 'request-components'),
+			gen_server:cast(NewState#state.cco, 'request-components'),
 			%% Process components
 			{next_state, wait_for_end_components, NewState}
 	end;
@@ -368,7 +368,7 @@ initiation_received({'TC', 'U-ABORT', request, AbortParms}, State) when is_recor
 	NewState = State#state{parms = TrParms},
 	gen_fsm:send_event(NewState#state.tco, {'TR', 'U-ABORT', request, TrParms}),
 	%% Dialogue terminated to CHA
-	gen_fsm:send_event(NewState#state.cco, 'dialogue-terminated'),
+	gen_server:cast(NewState#state.cco, 'dialogue-terminated'),
 	%% Free dialogue ID
 	{stop, normal, NewState}.
 
@@ -383,9 +383,9 @@ initiation_sent({'TC', 'END', request, EndParms}, State) when is_record(EndParms
 	NewState = State#state{parms = TrParms},
 	gen_fsm:send_event(NewState#state.tco, {'TR', 'END', request, TrParms}),
 	%% Dialogue terminated to CHA
-	gen_fsm:send_event(NewState#state.cco, 'dialogue-terminated'),
+	gen_server:cast(NewState#state.cco, 'dialogue-terminated'),
 	{stop, normal, NewState};
-	
+
 %% reference: Figure A.5/Q.774 (sheet 7 of 11)
 %%% TC-U-ABORT request from TCU (local action)
 initiation_sent({'TC', 'U-ABORT', request, AbortParms}, State) when is_record(AbortParms, 'TC-U-ABORT') ->
@@ -394,7 +394,7 @@ initiation_sent({'TC', 'U-ABORT', request, AbortParms}, State) when is_record(Ab
 	NewState = State#state{parms = TrParms},
 	gen_fsm:send_event(NewState#state.tco, {'TR', 'U-ABORT', request, TrParms}),
 	%% Dialogue terminated to CHA
-	gen_fsm:send_event(NewState#state.cco, 'dialogue-terminated'),
+	gen_server:cast(NewState#state.cco, 'dialogue-terminated'),
 	{stop, normal, NewState};
 
 %% reference: Figure A.5/Q.774 (sheet 7 of 11)
@@ -425,7 +425,7 @@ initiation_sent({'TR', 'END', indication, EndParms}, State) when is_record(EndPa
 			NewState = State#state{parms = TcParms},
 			gen_fsm:send_event(NewState#state.usap, {'TC', 'P-ABORT', indication, TcParms}),
 			%% Dialogue terminated to CHA
-			gen_fsm:send_event(NewState#state.cco, 'dialogue-terminated'),
+			gen_server:cast(NewState#state.cco, 'dialogue-terminated'),
 			%% Free dialogue ID
 			{stop, normal, NewState};
 		AARE ->
@@ -442,12 +442,12 @@ initiation_sent({'TR', 'END', indication, EndParms}, State) when is_record(EndPa
 			case ComponentsPresent of
 				true ->
 					%% Components to CHA
-					gen_fsm:send_event(NewState#state.cco, {components, Components});
+					gen_server:cast(NewState#state.cco, {components, Components});
 				false ->
 					ok
 			end,
 			%% Dialogue terminated to CHA
-			gen_fsm:send_event(NewState#state.cco, 'dialogue-terminated'),
+			gen_server:cast(NewState#state.cco, 'dialogue-terminated'),
 			%% Free dialogue ID
 			{stop, normal, NewState}
 	end;
@@ -501,7 +501,7 @@ initiation_sent({'TR', 'CONTINUE', indication, ContParms}, State) when is_record
 			LastState = State#state{parms = TrParms},
 			gen_fsm:send_event(LastState#state.tco, {'TR', 'U-ABORT', request, TrParms}),
 			%% Dialogue terminated to CHA
-			gen_fsm:send_event(LastState#state.cco, 'dialogue-terminated'),
+			gen_server:cast(LastState#state.cco, 'dialogue-terminated'),
 			%% Free dialogue ID
 			{stop, normal, LastState};
 		AARE ->
@@ -518,7 +518,7 @@ initiation_sent({'TR', 'CONTINUE', indication, ContParms}, State) when is_record
 			case ComponentsPresent of
 				true ->
 					%% Components to CHA
-					gen_fsm:send_event(NewState#state.cco, {components, Components});
+					gen_server:cast(NewState#state.cco, {components, Components});
 				false ->
 					ok
 			end,
@@ -598,7 +598,7 @@ initiation_sent({'TR', 'U-ABORT', indication, AbortParms}, State) when is_record
 			gen_fsm:send_event(NewState#state.usap, {'TC', 'P-ABORT', indication, TcParms})
 	end,
 	%% Dialogue terminated to CHA
-	gen_fsm:send_event(NewState#state.cco, 'dialogue-terminated'),
+	gen_server:cast(NewState#state.cco, 'dialogue-terminated'),
 	%% Free dialogue ID
 	{stop, normal, NewState};
 
@@ -612,7 +612,7 @@ initiation_sent({'TR', 'P-ABORT', indication, AbortParms}, State) when is_record
 	%% TC-P-ABORT indication to TCU
 	gen_fsm:send_event(NewState#state.usap, {'TC', 'P-ABORT', indication, TcParms}),
 	%% Dialogue terminated to CHA
-	gen_fsm:send_event(NewState#state.cco, 'dialogue-terminated'),
+	gen_server:cast(NewState#state.cco, 'dialogue-terminated'),
 	%% Free dialogue ID
 	{stop, normal, NewState}.
 
@@ -622,7 +622,7 @@ initiation_sent({'TR', 'P-ABORT', indication, AbortParms}, State) when is_record
 active({'TC', 'CONTINUE', request, ContParms}, State) when is_record(ContParms, 'TC-CONTINUE') ->
 	NewState = State#state{parms = ContParms},
 	%% Request component to CHA
-	gen_fsm:send_event(NewState#state.cco, 'request-components'),
+	gen_server:cast(NewState#state.cco, 'request-components'),
 	%% Process components
 	{next_state, wait_cont_components_active, NewState};
 
@@ -639,12 +639,12 @@ active({'TC', 'END', request, EndParms}, State) when is_record(EndParms, 'TC-END
 			NewState = State#state{parms = TrParms},
 			gen_fsm:send_event(NewState#state.tco, {'TR', 'END', request, TrParms}),
 			%% Dialogue terminated to CHA
-			gen_fsm:send_event(NewState#state.cco, 'dialogue-terminated'),
+			gen_server:cast(NewState#state.cco, 'dialogue-terminated'),
 			%% Free dialogue ID
 			{stop, normal, NewState};
 		basic ->
 			%% Request component to CHA
-			gen_fsm:send_event(State#state.cco, 'request-components'),
+			gen_server:cast(State#state.cco, 'request-components'),
 			%% Process components
 			{next_state, wait_for_end_components, State}
 	end.
@@ -665,7 +665,7 @@ wait_for_uni_components1(State) ->
 	%% TR-UNI request to TSL
 	gen_fsm:send_event(State#state.tco, {'TR', 'UNI', request, State#state.parms}),
 	%% Dialogue terminated to CHA
-	gen_fsm:send_event(State#state.cco, 'dialogue-terminated'),
+	gen_server:cast(State#state.cco, 'dialogue-terminated'),
 	%% Free dialogue ID
 	{stop, normal, State}.
 	
@@ -739,7 +739,7 @@ wait_for_end_components1(State) ->
 	%% TR-END request to TSL
 	gen_fsm:send_event(State#state.tco, {'TR', 'END', request, State#state.parms}),
 	%% Dialogue terminated to CHA
-	gen_fsm:send_event(State#state.cco, 'dialogue-terminated'),
+	gen_server:cast(State#state.cco, 'dialogue-terminated'),
 	%% Free dialogue ID
 	{stop, normal, State}.
 
