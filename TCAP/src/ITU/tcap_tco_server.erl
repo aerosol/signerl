@@ -153,7 +153,7 @@
 -behaviour(gen_server).
 
 % export the gen_server interface
--export([start/3, start/4, start_link/3, start_link/4,
+-export([start/4, start/5, start_link/3, start_link/4,
 		call/2, call/3, multi_call/2, multi_call/3, multi_call/4,
 		cast/2, abcast/2, abcast/3, reply/2, enter_loop/4, enter_loop/5]).
 
@@ -288,7 +288,7 @@ handle_cast({'N', 'UNITDATA', indication, UdataParams}, State)
 				{ok, Begin} ->
 					% Assign local transaction ID
 					TransactionID = new_tid(),
-					StartFunc = get_start(transaction, TransactionID, State),
+					StartFunc = get_start(in_transaction, TransactionID, State),
 					ChildSpec = {TransactionID, StartFunc, temporary, infinity, supervisor, [tcap_tsm_fsm]},
 					% Is TID = no TID?
 					% Note:  The assignment of the ID above just gets the next available
@@ -509,11 +509,11 @@ handle_cast({'TR', 'BEGIN', request, BeginParams}, State)
 	% Create a Transaction State Machine (TSM)
 	OTID = BeginParams#'TR-BEGIN'.transactionID,
 	ChildName = list_to_atom("tsm_" ++ integer_to_list(OTID)),
-	{ok, {M, F, A, Mods}} = application:get_env(start_tsm),
-	% TDODO:  fixme!!! StartFunc = get_start(transaction, OTID, State),
-	% ChildSpec = {ChildName, StartFunc, temporary, infinity, worker, [tcap_tsm_fsm]},
-	% {ok, TSM} = supervisor:start_child(State#state.supervisor, ChildSpec),
-	% gen_fsm:send_event(TSM, {'BEGIN', transaction, BeginParams}),
+	%%%% FIXME {ok, {M, F, A, Mods}} = application:get_env(start_tsm),
+	StartFunc = get_start(out_transaction, OTID, State),
+	ChildSpec = {ChildName, StartFunc, temporary, 1000, worker, [tcap_tsm_fsm]},
+	{ok, TSM} = supervisor:start_child(State#state.supervisor, ChildSpec),
+	gen_fsm:send_event(TSM, {'BEGIN', transaction, BeginParams}),
 	{noreply, State};
 handle_cast({'TR', 'CONTINUE', request, ContParams}, State)
 		when is_record(ContParams, 'TR-CONTINUE') ->
@@ -664,12 +664,12 @@ get_start(out_transaction, TransactionID, State) ->
 %%----------------------------------------------------------------------
 
 %% @hidden
-start(Module, Args, Options) ->
-	gen_server:start(?MODULE, [Module, Args], Options).
+start(Module, SupRef, Args, Options) ->
+	gen_server:start(?MODULE, [SupRef, Module, Args], Options).
 
 %% @hidden
-start(ServerRef, Module, Args, Options) ->
-	gen_fsm:start(ServerRef, ?MODULE, [Module, Args], Options).
+start(ServerRef, SupRef, Module, Args, Options) ->
+	gen_server:start(ServerRef, ?MODULE, [SupRef, Module, Args], Options).
 
 %% @hidden
 start_link(Module, Args, Options) ->
