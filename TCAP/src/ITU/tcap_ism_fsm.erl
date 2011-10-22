@@ -164,7 +164,12 @@ op_sent_cl2(#'TC-U-REJECT'{}, State) ->
 op_sent_cl2(Op, State) when
 			is_record(Op, 'TC-RESULT-L');
 			is_record(Op, 'TC-RESULT-NL') ->
-	% Generate RJ component to CCO
+	% Generate REJ component to CCO
+	Problem = {'ReturnResultProblem', resultResponseUnexpected},
+	Reject = #'TC-R-REJECT'{dialogueID = Satate#state.dialogueId,
+				invokeID = State#state.invokeId,
+				problemCode = Problem},
+	gen_server:cast(State#state.cco, {reject_component, Reject}),
 	% stop invocation timer
 	timer:cancel(State#state.inv_timer),
 	% terminate
@@ -197,7 +202,12 @@ op_sent_cl4('terminate', State) ->
 	{stop, terminate_req, State};
 op_sent_cl4(Op, State) ->
 	% Figure A.7/Q.774 (6 of 6)
-	% FIXME: generate RJ component to CCO
+	% generate REJ component to CCO
+	Problem = {'ReturnResultProblem', resultResponseUnexpected},
+	Reject = #'TC-R-REJECT'{dialogueID = Satate#state.dialogueId,
+				invokeID = State#state.invokeId,
+				problemCode = Problem},
+	gen_server:cast(State#state.cco, {reject_component, Reject}),
 	% stop invocation timer
 	timer:cancel(State#state.inv_timer),
 	% terminate
