@@ -151,6 +151,11 @@ handle_cast({components, Components}, State) ->
 	{noreply, State};
 
 % ISM -> CCO: Generate REJ component
+handle_cast({reject_component, Reject}, State) ->
+	Component = #component{user_prim = Reject, asn_ber = 0}, %FIXME
+	NewState = add_components_to_state(State, Component),
+	{noreply, NewState};
+
 % DHA -> CHA (CCO)
 handle_cast('request-components', State = #state{components=CompIn}) ->
 	% Figure A.6/Q.774 (4 of 4)
@@ -282,6 +287,8 @@ uprim_to_asn_rec(#'TC-U-ERROR'{invokeID = InvId, error = Error,
 	#'ReturnError'{invokeId = asn_val(InvId),
 			errcode = asn_val(Error),
 			parameter = asn_val(Params)};
+uprim_to_asn_rec(#'TC-R-REJECT'{invokeID = InvId, problemCode = Pcode}) ->
+	#'Reject'{invokeId = InvId, problem = Pcode};
 uprim_to_asn_rec(#'TC-U-REJECT'{invokeID = InvId, problemCode = Pcode}) ->
 	#'Reject'{invokeId = InvId, problem = Pcode}.
 
