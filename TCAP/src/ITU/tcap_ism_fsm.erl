@@ -82,8 +82,10 @@
 -define(REJECT_TIMER, 1 * 1000).
 
 start_link(Usap, DialogueId, InvokeId, OpClass, InvTimeout) ->
+	ProcName = list_to_atom("ism_fsm_" ++ integer_to_list(DialogueID)
+				++ "_" ++ integer_to_list(InvokeId)),
 	ArgL = [Usap, DialogueId, InvokeId, self(), OpClass, InvTimeout],
-	gen_fsm:start_link(ArgL, [{debug, [trace]}]).
+	gen_fsm:start_link(ProcName, ArgL, [{debug, [trace]}]).
 
 % DHA needs to tell us: USAP, DialogueID, InvokeID, CCO-PID, OpClass, InvTimer
 init([Usap, DialogueId, InvokeId, CcoPid, OpClass, InvTimeout]) ->
