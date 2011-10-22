@@ -46,9 +46,9 @@
 %% call backs needed for supervisor behaviour
 -export([init/1]).
 
-init([USAP, ID]) ->
+init([USAP, ID, DHA]) ->
 	Name = list_to_atom("cco_" ++ integer_to_list(ID)),
-	StartArgs = [tcap_cco_server, [USAP, ID, self()], []],
+	StartArgs = [tcap_cco_server, [self(), USAP, ID, DHA], [{debug, [trace]}]],
 	StartFunc = {gen_fsm, start_link, StartArgs},
 	ChildSpec = {Name, StartFunc, temporary, 4000, worker,
 			[tcap_cco_server]},
