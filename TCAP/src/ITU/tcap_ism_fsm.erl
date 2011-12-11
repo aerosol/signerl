@@ -82,7 +82,7 @@
 -define(REJECT_TIMER, 1 * 1000).
 
 start_link(Usap, DialogueId, InvokeId, OpClass, InvTimeout) ->
-	ProcName = list_to_atom("ism_fsm_" ++ integer_to_list(DialogueID)
+	ProcName = list_to_atom("ism_fsm_" ++ integer_to_list(DialogueId)
 				++ "_" ++ integer_to_list(InvokeId)),
 	ArgL = [Usap, DialogueId, InvokeId, self(), OpClass, InvTimeout],
 	gen_fsm:start_link(ProcName, ArgL, [{debug, [trace]}]).
@@ -168,7 +168,7 @@ op_sent_cl2(Op, State) when
 			is_record(Op, 'TC-RESULT-NL') ->
 	% Generate REJ component to CCO
 	Problem = {'ReturnResultProblem', resultResponseUnexpected},
-	Reject = #'TC-R-REJECT'{dialogueID = Satate#state.dialogueId,
+	Reject = #'TC-R-REJECT'{dialogueID = State#state.dialogueId,
 				invokeID = State#state.invokeId,
 				problemCode = Problem},
 	gen_server:cast(State#state.cco, {reject_component, Reject}),
@@ -206,7 +206,7 @@ op_sent_cl4(Op, State) ->
 	% Figure A.7/Q.774 (6 of 6)
 	% generate REJ component to CCO
 	Problem = {'ReturnResultProblem', resultResponseUnexpected},
-	Reject = #'TC-R-REJECT'{dialogueID = Satate#state.dialogueId,
+	Reject = #'TC-R-REJECT'{dialogueID = State#state.dialogueId,
 				invokeID = State#state.invokeId,
 				problemCode = Problem},
 	gen_server:cast(State#state.cco, {reject_component, Reject}),
