@@ -185,7 +185,7 @@ behaviour_info(Other) ->
 %%----------------------------------------------------------------------
 
 %% @hidden
-init([Sup, Module, Args]) ->
+init([Sup, Module, Args]) when is_list(Args) ->
 	process_flag(trap_exit, true),
 	case Module:init(Args) of
 		{ok, ExtState} ->
