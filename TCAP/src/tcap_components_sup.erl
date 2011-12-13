@@ -49,7 +49,7 @@
 init([USAP, ID, DHA]) ->
 	Name = list_to_atom("cco_" ++ integer_to_list(ID)),
 	StartArgs = [tcap_cco_server, [self(), USAP, ID, DHA], [{debug, [trace]}]],
-	StartFunc = {gen_fsm, start_link, StartArgs},
+	StartFunc = {gen_server, start_link, StartArgs},
 	ChildSpec = {Name, StartFunc, temporary, 4000, worker,
 			[tcap_cco_server]},
 	{ok,{{one_for_all, 0, 1}, [ChildSpec]}}.
