@@ -49,7 +49,7 @@
 
 -behaviour(supervisor).
 
--export([init/1]).
+-export([init/1, start_link/3]).
 
 
 %% @spec(StartArgs::term()) -> Result = {ok,{{RestartStrategy,MaxR,MaxT},[ChildSpec]}} | ignore
@@ -65,5 +65,8 @@ init([Module, Args, Options]) when is_list(Args), is_list(Options) ->
 	StartArgs = [{local, Name}, tcap_tco_server, [self(), Module, Args], Options],
 	StartFunc = {gen_server, start_link, StartArgs},
 	ChildSpec = {tco, StartFunc, permanent, 4000, worker, [Module, tcap_tco_server]},
-	{ok,{{one_for_one, 10, 60}, [ChildSpec]}}.
+	{ok,{{one_for_one, 1, 1}, [ChildSpec]}}.
 
+
+start_link(Mod, Args, Opts) ->
+	supervisor:start_link(?MODULE, [Mod, Args, Opts]).
