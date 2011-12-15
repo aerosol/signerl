@@ -56,7 +56,7 @@ init({USAP, LocalTID, TCO, SupId}) ->
 
 %% when started from TSM
 init({USAP, LocalTID, TCO}) ->
-	StartArgs = [tcap_dha_fsm, [{USAP, LocalTID, TCO, self()}], []],
+	StartArgs = [tcap_dha_fsm, {USAP, LocalTID, TCO, self()}, []],
 	StartFunc = {gen_fsm, start_link, StartArgs},
 	ChildSpec = {dha, StartFunc, permanent, 4000, worker,
 			[tcap_dha_fsm]},

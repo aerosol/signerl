@@ -94,7 +94,7 @@ start_sap(SccpModule, Args, Opts) ->
 %% local functions
 
 start_new_dha(TCO, LocalTID) ->
-	Args = [self(), LocalTID, TCO],
+	Args = {self(), LocalTID, TCO},
 	{ok, Pid} = supervisor:start_link(tcap_dialogue_sup, Args),
 	Pid.
 
