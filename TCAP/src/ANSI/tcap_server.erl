@@ -233,4 +233,4 @@ code_change(_, _, _) -> ok.
 
 %% get the next originating transaction id from the global counter
 new_transaction_id() ->
-	ets:update_counter(tcap, transactionID, {2, 1, 16#ffffffff, 0}).
+	ets:update_counter(tcap_transaction, transactionID, {2, 1, 16#ffffffff, 0}).

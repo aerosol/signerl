@@ -62,6 +62,7 @@
 %%
 init(_StartArgs) ->
 	StartMod = tcap_sap_sup,
-	StartFunc = {supervisor, start_link, [StartMod]},
-	ChildSpec = {sap_sup, StartFunc, permanent, infinity, supervisor, [StartMod]},
+	StartFunc = {supervisor, start_link, [StartMod,[osmo_sccp_tcap,[6],[]]]},
+	%	    {Id, StartFunc, Restart, Shutdown, Tpype, Modules}
+	ChildSpec = {tcap_sap_sup, StartFunc, permanent, infinity, supervisor, [StartMod]},
 	{ok,{{simple_one_for_one, 10, 60}, [ChildSpec]}}.

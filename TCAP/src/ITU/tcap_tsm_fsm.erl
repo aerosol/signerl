@@ -76,7 +76,7 @@
 %% initialize the server
 init({NSAP, USAP, TID, Supervisor, SupRef, TCO}) -> 
 	%% store our process identifier in the global transaction ID table
-	ets:insert(transaction, {TID, self()}),
+	ets:insert(tcap_transaction, {TID, self()}),
 	process_flag(trap_exit, true),
 	{ok, idle, #state{nsap = NSAP, usap = USAP, localTID = TID, supervisor = Supervisor,
 			supref = SupRef, tco = TCO}}.
@@ -418,7 +418,7 @@ handle_info(Info, StateName, State) ->
 
 %% handle a shutdown request
 terminate(_Reason, _StateName, State) ->
-	ets:delete(transaction, State#state.localTID),
+	ets:delete(tcap_transaction, State#state.localTID),
 	%% signal TCO that we are stopping
 	gen_server:cast(State#state.supervisor, {'tsm-stopped', State#state.supref}).
 

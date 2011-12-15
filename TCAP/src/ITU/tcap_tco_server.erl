@@ -335,7 +335,7 @@ handle_cast({'N', 'UNITDATA', indication, UdataParams}, State)
 			case 'TR':decode('Continue', TPDU) of
 				{ok, Continue} ->
 					% DTID assigned?
-					case catch ets:lookup_element(transaction, TPDU#'Continue'.dtid, 2) of
+					case catch ets:lookup_element(tcap_transaction, TPDU#'Continue'.dtid, 2) of
 						{error, _Reason}  ->
 							error_logger:error_report(["DTID not found in received N-CONTINUE",
 									{dtid, TPDU#'End'.dtid}, 
@@ -371,7 +371,7 @@ handle_cast({'N', 'UNITDATA', indication, UdataParams}, State)
 			case 'TR':decode('End', TPDU) of
 				{ok, End} ->
 					% DTID assigned?
-					case catch ets:lookup(transaction, TPDU#'End'.dtid, 2) of
+					case catch ets:lookup(tcap_transaction, TPDU#'End'.dtid, 2) of
 						{error, _Reason}  ->
 							error_logger:error_report(["DTID not found in received N-END",
 									{dtid, TPDU#'End'.dtid},
@@ -401,7 +401,7 @@ handle_cast({'N', 'UNITDATA', indication, UdataParams}, State)
 			case 'TR':decode('Abort', TPDU) of
 				{ok, Abort} ->
 					% DTID assigned?
-					case catch ets:lookup(transaction, TPDU#'Abort'.dtid, 2) of
+					case catch ets:lookup(tcap_transaction, TPDU#'Abort'.dtid, 2) of
 						{error, _Reason} ->
 							error_logger:error_report(["DTID not found in received N-ABORT",
 									{dtid, TPDU#'Abort'.dtid},
@@ -518,19 +518,19 @@ handle_cast({'TR', 'BEGIN', request, BeginParams}, State)
 handle_cast({'TR', 'CONTINUE', request, ContParams}, State)
 		when is_record(ContParams, 'TR-CONTINUE') ->
 	TransactionID = ContParams#'TR-CONTINUE'.transactionID,
-	TSM  = ets:lookup_element(transaction, TransactionID, 2),
+	TSM  = ets:lookup_element(tcap_transaction, TransactionID, 2),
 	gen_fsm:send_event(TSM, {'CONTINUE', transaction, ContParams}),
 	{noreply, State};
 handle_cast({'TR', 'END', request, EndParams}, State)
 		when is_record(EndParams, 'TR-END') ->
 	TransactionID = EndParams#'TR-END'.transactionID,
-	TSM  = ets:lookup_element(transaction, TransactionID, 2),
+	TSM  = ets:lookup_element(tcap_transaction, TransactionID, 2),
 	gen_fsm:send_event(TSM, {'END', transaction, EndParams}),
 	{noreply, State};
 handle_cast({'TR', 'U-ABORT', request, AbortParams}, State)
 		when is_record(AbortParams, 'TR-U-ABORT') ->
 	TransactionID = AbortParams#'TR-U-ABORT'.transactionID,
-	TSM  = ets:lookup_element(transaction, TransactionID, 2),
+	TSM  = ets:lookup_element(tcap_transaction, TransactionID, 2),
 	gen_fsm:send_event(TSM, {'ABORT', transaction, AbortParams}),
 	{noreply, State};
 	
@@ -624,7 +624,7 @@ code_change(OldVersion, statename, State, Extra) ->
 %%
 %% reference: Figure A.3 bis/Q.774
 new_tid() ->
-	ets:update_counter(transaction, transactionID, {2, 1, 16#ffffffff, 0}).
+	ets:update_counter(tcap_transaction, transactionID, {2, 1, 16#ffffffff, 0}).
 
 get_start(dialogue, DialogueID, State) ->
 	Module = State#state.module,
