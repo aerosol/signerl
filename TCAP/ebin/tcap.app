@@ -8,6 +8,7 @@
 				component_cordinator_sup, component_cordinator,
 				invocation_sup, invocation_fsm]},
 		{registered, []},
-		{applications, [kernel, stdlib, sccp]},
+		%{applications, [kernel, stdlib, sccp]},
+		{applications, [kernel, stdlib]},
 		{env, [{supref, {local, tcap_sup}}]},
 		{mod, {tcap_app, []}}]}.
