@@ -64,14 +64,15 @@ clean:
 			Remote-Operations-Generic-ROS-PDUs.erl \
 			TC-Testing-User.erl TC-TMP.erl \
 			TCAP-Examples.erl TCAP-Tools.erl \
-			TC-Notation-Extensions.erl
+			TC-Notation-Extensions.erl TC.erl
 	- rm -f Remote-Operations-Generic-ROS-PDUs.hrl \
 			DialoguePDUs.hrl UnidialoguePDUs.hrl \
 			TCAPMessages.hrl TR.hrl \
 			TC-Testing-User.hrl TC-TMP.hrl \
-			TCAP-Examples.hrl
+			TCAP-Examples.hrl TC.hrl
 	- rm -f $(EBIN)/TR.beam $(EBIN)/TCAPMessages.beam \
 			$(EBIN)/DialoguePDUs.beam $(EBIN)/UnidialoguePDUs.beam \
 			$(EBIN)/TC-Testing-User.beam \
-			$(EBIN)/TCAP-Examples.beam $(EBIN)/TCAP-Tools.beam
+			$(EBIN)/TCAP-Examples.beam $(EBIN)/TCAP-Tools.beam \
+			$(EBIN)/TC.beam
 
