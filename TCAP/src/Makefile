@@ -5,7 +5,7 @@ EBIN			= ../ebin
 ERL			= erl
 ERLC			= erlc
 EMULATOR		= beam
-ERLCFLAGS	= -b $(EMULATOR) -o $(EBIN) -W -v +warn_unused_vars 
+ERLCFLAGS	= -b $(EMULATOR) -o $(EBIN) -W -v +warn_unused_vars -I../include
 
 $(EBIN)/%.$(EMULATOR):%.erl
 	$(ERLC) $(ERLCFLAGS) $<
@@ -16,7 +16,8 @@ BEAMS		=	$(EBIN)/tcap.$(EMULATOR) $(EBIN)/tcap_app.$(EMULATOR) \
 						$(EBIN)/tcap_transaction_sup.$(EMULATOR) \
 						$(EBIN)/tcap_dialogue_sup.$(EMULATOR) \
 						$(EBIN)/tcap_components_sup.$(EMULATOR) \
-						$(EBIN)/tcap_invocation_sup.$(EMULATOR)
+						$(EBIN)/tcap_invocation_sup.$(EMULATOR) \
+						$(EBIN)/tcap_user.$(EMULATOR)
 
 .PHONY:	default
 default:	all
