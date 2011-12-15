@@ -61,7 +61,7 @@
 %%
 init([Module, Args, Options]) when is_list(Args), is_list(Options) ->
 	SSN = hd(Args),
-	Name = list_to_atom("tcap_ssn" ++ integer_to_list(SSN)),
+	Name = list_to_atom("tcap_tco_ssn_" ++ integer_to_list(SSN)),
 	StartArgs = [{local, Name}, tcap_tco_server, [self(), Module, Args], Options],
 	StartFunc = {gen_server, start_link, StartArgs},
 	ChildSpec = {tco, StartFunc, permanent, 4000, worker, [Module, tcap_tco_server]},
