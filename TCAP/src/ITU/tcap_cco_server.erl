@@ -363,8 +363,10 @@ process_rx_component(ISMs, Comp) ->
 	Prim = asn_rec_to_uprim(Comp),
 	gem_fsm:send_event(ISM, Prim).
 
-add_components_to_state(State = #state{components=CompOld}, CompNew) ->
-	State#state{components = CompOld ++ CompNew}.
+add_components_to_state(State = #state{components=CompOld}, CompNew) when is_list(CompNew) ->
+	State#state{components = CompOld ++ CompNew};
+add_components_to_state(State, CompNew) when is_record(CompNew, component) ->
+	add_components_to_state(State, [CompNew]).
 
 
 % get the invokeId from the given asn-record component tuple.
