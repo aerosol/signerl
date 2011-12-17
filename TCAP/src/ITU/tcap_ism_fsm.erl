@@ -85,7 +85,7 @@ start_link(Usap, DialogueId, InvokeId, OpClass, InvTimeout) ->
 	ProcName = list_to_atom("ism_fsm_" ++ integer_to_list(DialogueId)
 				++ "_" ++ integer_to_list(InvokeId)),
 	ArgL = [Usap, DialogueId, InvokeId, self(), OpClass, InvTimeout],
-	gen_fsm:start_link(ProcName, ArgL, [{debug, [trace]}]).
+	gen_fsm:start_link({local, ProcName}, ?MODULE, ArgL, [{debug, [trace]}]).
 
 % DHA needs to tell us: USAP, DialogueID, InvokeID, CCO-PID, OpClass, InvTimer
 init([Usap, DialogueId, InvokeId, CcoPid, OpClass, InvTimeout]) ->
