@@ -46,11 +46,10 @@
 %% call backs needed for supervisor behaviour
 -export([init/1]).
 
-init([USAP, InvokeID]) ->
-	Name = list_to_atom("tcap_ism_" ++ integer_to_list(InvokeID)),
-	StartArgs = [{local, Name}, tcap_ism_fsm, [USAP, InvokeID], []],
-	StartFunc = {gen_fsm, start_link, StartArgs},
-	ChildSpec = {Name, StartFunc, temporary, 4000, worker,
+init([USAP, DlgId, InvokeID, OpClass, Timeout]) ->
+	StartArgs = [USAP, DlgId, InvokeID, OpClass, Timeout],
+	StartFunc = {tcap_ism_fsm, start_link, StartArgs},
+	ChildSpec = {ism, StartFunc, temporary, 4000, worker,
 			[tcap_ism_sup]},
 	{ok,{{one_for_all, 0, 1}, [ChildSpec]}}.
 
