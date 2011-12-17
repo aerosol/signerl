@@ -46,10 +46,20 @@
 %% call backs needed for supervisor behaviour
 -export([init/1]).
 
-init([USAP, ID]) ->
+gen_cco_child(USAP, ID) ->
 	Name = list_to_atom("tcap_cco_" ++ integer_to_list(ID)),
 	StartArgs = [{local, Name}, tcap_cco_server, [self(), USAP, ID], [{debug, [trace]}]],
 	StartFunc = {gen_server, start_link, StartArgs},
-	ChildSpec = {cco, StartFunc, temporary, 4000, worker, [tcap_cco_server]},
-	{ok,{{one_for_all, 0, 1}, [ChildSpec]}}.
+	{cco, StartFunc, permanent, 4000, worker, [tcap_cco_server]}.
+
+gen_inv_sup_child(ID) ->
+	StartFunc = {tcap_invocation_sup, start_link, [ID]},
+	{invocation_sup, StartFunc, permanent, 4000, supervisor, [tcap_invocation_sup]}.
+
+init([USAP, ID]) ->
+	% start the CCO server as well as a (childless) invocation supervisor
+	InvSup = gen_inv_sup_child(ID),
+	Cco = gen_cco_child(USAP, ID),
+	io:format("~p~n", [InvSup]),
+	{ok,{{one_for_all, 0, 1}, [InvSup, Cco]}}.
 

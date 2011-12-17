@@ -236,7 +236,7 @@ process_request_components([Head|Tail], State, AsnComps, ISMs) when
 	    		 invokeID = InvId} ->
 		% if INVOKE component
 		% start ISM and store ISM
-		{ok, ISM} = tcap_ism_fsm:start_link(Usap, DialogueId,
+		{ok, ISM} = tcap_invocation_sup:start_ism(Usap, DialogueId,
 						    InvId, Class, Tout),
 		% signal 'operation-sent' to ISM
 		gen_fsm:sent_event(ISM, 'operation-sent'),

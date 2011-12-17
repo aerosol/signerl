@@ -46,10 +46,20 @@
 %% call backs needed for supervisor behaviour
 -export([init/1]).
 
-init([USAP, DlgId, InvokeID, OpClass, Timeout]) ->
+%% API to other modules
+-export([start_ism/1, start_link/1]).
+
+init([]) ->
+	{ok,{{one_for_all, 0, 1}, []}}.
+
+start_ism([USAP, DlgId, InvokeID, OpClass, Timeout]) ->
+	SupRef = list_to_atom("tcap_invocation_sup_" ++ integer_to_list(DlgId)),
 	StartArgs = [USAP, DlgId, InvokeID, OpClass, Timeout],
 	StartFunc = {tcap_ism_fsm, start_link, StartArgs},
 	ChildSpec = {ism, StartFunc, temporary, 4000, worker,
 			[tcap_ism_sup]},
-	{ok,{{one_for_all, 0, 1}, [ChildSpec]}}.
+	supervisor:start_child(SupRef, ChildSpec).
 
+start_link(ID) ->
+	Name = list_to_atom("tcap_invocation_sup_" ++ integer_to_list(ID)),
+	supervisor:start_link({local, Name}, ?MODULE, []).
