@@ -170,7 +170,7 @@ idle({'TR', 'UNI', indication, UniParms}, State) when is_record(UniParms, 'TR-UN
 					ComponentsPresent = false
 			end,
 			%% Assign dialogue ID
-			DialogueID = transaction_coordinator_server:new_tid(),
+			DialogueID = tcap_tco_server:new_tid(),
 			NewTcParms = TcParms#'TC-UNI'{qos = UniParms#'TR-UNI'.qos,
 					destAddress = UniParms#'TR-UNI'.destAddress,
 					origAddress = UniParms#'TR-UNI'.origAddress,
@@ -240,7 +240,7 @@ idle({'TR', 'BEGIN', indication, BeginParms}, State) when is_record(BeginParms, 
 					ComponentsPresent = false
 			end,
 			%% Assign dialogue ID
-			DialogueID = transaction_coordinator_server:new_tid(),
+			DialogueID = tcap_tco_server:new_tid(),
 			NewTcParms = TcParms#'TC-BEGIN'{qos = BeginParms#'TR-BEGIN'.qos,
 					destAddress = BeginParms#'TR-BEGIN'.destAddress,
 					origAddress = BeginParms#'TR-BEGIN'.origAddress,
@@ -682,7 +682,7 @@ wait_for_begin_components({'requested-components', Components}, State) ->
 	wait_for_begin_components1(State#state{parms = TrParms}).
 wait_for_begin_components1(State) ->
 	%% Assign local transaction ID
-	TrParms = (State#state.parms)#'TR-BEGIN'{transactionID = transaction_coordinator_server:new_tid()},
+	TrParms = (State#state.parms)#'TR-BEGIN'{transactionID = tcap_tco_server:new_tid()},
 	%% TR-BEGIN request to TSL
 	gen_fsm:send_event(State#state.tco, {'TR', 'BEGIN', request, TrParms}),
 	{next_state, initiation_sent, State#state{parms = TrParms}}.
