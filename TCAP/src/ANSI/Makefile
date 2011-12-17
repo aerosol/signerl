@@ -6,7 +6,7 @@ EBIN			= ../../ebin/itu
 
 ERLC			= erlc
 EMULATOR		= beam
-ERLCFLAGS	= -b $(EMULATOR) -o $(EBIN) -W -v +warn_unused_vars -I ../asn_src -I ../include -I $(SCCPINCDIR)
+ERLCFLAGS	= -b $(EMULATOR) -o $(EBIN) -W -v +warn_unused_vars -I ../../asn_src -I ../../include -I $(SCCPINCDIR)
 
 $(EBIN)/%.$(EMULATOR):%.erl
 	$(ERLC) $(ERLCFLAGS) $<
