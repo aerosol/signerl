@@ -239,7 +239,7 @@ process_request_components([Head|Tail], State, AsnComps, ISMs) when
 		{ok, ISM} = tcap_invocation_sup:start_ism(Usap, DialogueId,
 						    InvId, Class, Tout),
 		% signal 'operation-sent' to ISM
-		gen_fsm:sent_event(ISM, 'operation-sent'),
+		gen_fsm:send_event(ISM, 'operation-sent'),
 		NewISMs = [{InvId, ISM}|ISMs];
 	    _ ->
 		NewISMs = ISMs
