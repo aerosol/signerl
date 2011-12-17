@@ -48,7 +48,7 @@
 
 init({NSAP, USAP, TID, SupRef}) ->
 	Name = list_to_atom("tcap_tsm_" ++ integer_to_list(TID)),
-	StartArgs = [tcap_tsm_fsm, [NSAP, USAP, TID, self(), SupRef], []],
+	StartArgs = [{local, Name}, tcap_tsm_fsm, [NSAP, USAP, TID, self(), SupRef], []],
 	StartFunc = {gen_fsm, start_link, StartArgs},
 	ChildSpec = {Name, StartFunc, permanent, 1000, worker, [tcap_tsm_fsm]},
 	{ok,{{one_for_all, 0, 1}, [ChildSpec]}}.

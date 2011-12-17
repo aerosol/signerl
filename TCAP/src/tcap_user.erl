@@ -95,6 +95,7 @@ start_sap(SccpModule, Args, Opts) ->
 
 start_new_dha(TCO, LocalTID) ->
 	Args = {self(), LocalTID, TCO},
+	% this returns the _supervisor_ pid, not DHA
 	{ok, Pid} = supervisor:start_link(tcap_dialogue_sup, Args),
-	Pid.
+	list_to_atom("tcap_dha_" ++ integer_to_list(LocalTID)).
 

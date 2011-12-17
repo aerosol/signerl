@@ -48,7 +48,7 @@
 
 init([USAP, InvokeID]) ->
 	Name = list_to_atom("tcap_ism_" ++ integer_to_list(InvokeID)),
-	StartArgs = [tcap_ism_fsm, [USAP, InvokeID], []],
+	StartArgs = [{local, Name}, tcap_ism_fsm, [USAP, InvokeID], []],
 	StartFunc = {gen_fsm, start_link, StartArgs},
 	ChildSpec = {Name, StartFunc, temporary, 4000, worker,
 			[tcap_ism_sup]},

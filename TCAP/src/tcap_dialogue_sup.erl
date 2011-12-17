@@ -46,18 +46,33 @@
 %% call backs needed for supervisor behaviour
 -export([init/1]).
 
+
+%% Gen child specification for Component Coordinator (CCO) supervisor process
+gen_comp_sup_spec(USAP, DialogueID) ->
+	ChildName = list_to_atom("tcap_components_sup_" ++ integer_to_list(DialogueID)),
+	ChildArgs = [USAP, DialogueID],
+	StartArgs = [{local, ChildName}, tcap_components_sup, ChildArgs],
+	StartFunc = {supervisor, start_link, StartArgs},
+	ChildSpec = {cco_sup, StartFunc, permanent, infinity,
+			supervisor, [tcap_components_sup]},
+	ChildSpec.
+
 %% when started from TCO
 init({USAP, LocalTID, TCO, SupId}) ->
-	StartArgs = [tcap_dha_fsm, [{USAP, LocalTID, TCO, SupId, self()}], []],
+	StartName = list_to_atom("tcap_dha_" ++ integer_to_list(LocalTID)),
+	StartArgs = [{local, StartName}, tcap_dha_fsm, [{USAP, LocalTID, TCO, SupId, self()}], []],
 	StartFunc = {gen_fsm, start_link, StartArgs},
+	ChildSpecComp = gen_comp_sup_spec(USAP, LocalTID),
 	ChildSpec = {dha, StartFunc, permanent, 4000, worker,
 			[tcap_dha_fsm]},
-	{ok,{{one_for_all, 0, 1}, [ChildSpec]}};
+	{ok,{{one_for_all, 0, 1}, [ChildSpecComp, ChildSpec]}};
 
 %% when started from TSM
 init({USAP, LocalTID, TCO}) ->
-	StartArgs = [tcap_dha_fsm, {USAP, LocalTID, TCO, self()}, []],
+	StartName = list_to_atom("tcap_dha_" ++ integer_to_list(LocalTID)),
+	StartArgs = [{local, StartName}, tcap_dha_fsm, {USAP, LocalTID, TCO, self()}, []],
 	StartFunc = {gen_fsm, start_link, StartArgs},
+	ChildSpecComp = gen_comp_sup_spec(USAP, LocalTID),
 	ChildSpec = {dha, StartFunc, permanent, 4000, worker,
 			[tcap_dha_fsm]},
-	{ok,{{one_for_all, 0, 1}, [ChildSpec]}}.
+	{ok,{{one_for_all, 0, 1}, [ChildSpecComp, ChildSpec]}}.

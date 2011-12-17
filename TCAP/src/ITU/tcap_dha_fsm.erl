@@ -84,14 +84,8 @@
 init({USAP, DialogueID, TCO, Supervisor}) ->
 	init({USAP, DialogueID, TCO, undefined, Supervisor});
 init({USAP, DialogueID, TCO, SupId, Supervisor}) ->
-	%% Start a Component Coordinator (CCO) process
-	ChildName = list_to_atom("cco_sup_" ++ integer_to_list(DialogueID)),
-	ChildArgs = [USAP, DialogueID, self()],
-	StartFunc = {supervisor, start_link, [tcap_components_sup, ChildArgs]},
-	ChildSpec = {ChildName, StartFunc, permanent, infinity,
-			supervisor, [tcap_components_sup]},
-	{ok, CCO} = supervisor:start_child(Supervisor, ChildSpec),
 	ets:insert(tcap_dha, {DialogueID, self()}),
+	CCO = list_to_atom("tcap_cco_" ++ integer_to_list(DialogueID)),
 	process_flag(trap_exit, true),
 	{ok, idle, #state{usap = USAP, did = DialogueID,
 			tco = TCO, supid = SupId, cco = CCO}}.
@@ -839,5 +833,5 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 
 
 % front-end function called by tcap_user to get CCO for given DHA
-get_cco_pid(DHA) when is_pid(DHA) ->
+get_cco_pid(DHA) ->
 	gen_fsm:sync_send_all_state_event(DHA, get_cco_pid).
