@@ -72,7 +72,7 @@ init([Supervisor, USAP, DialogueID]) ->
 	process_flag(trap_exit, true),
 	DHA = list_to_atom("tcap_dha_" ++ integer_to_list(DialogueID)),
 	{ok, #state{supervisor = Supervisor, usap = USAP, dha = DHA,
-		    dialogueID = DialogueID, components = []}}.
+		    dialogueID = DialogueID, components = [], ism = []}}.
 
 %% set the DHA pid
 handle_call(set_dha, From, State) ->
