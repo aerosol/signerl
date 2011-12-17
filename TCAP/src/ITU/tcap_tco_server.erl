@@ -164,6 +164,9 @@
 % behaviour modules must export this function
 -export([behaviour_info/1]).
 
+% api for other modules
+-export([new_tid/0]).
+
 %% define what callbacks users must export
 %%
 %% @hidden
