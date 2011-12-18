@@ -60,7 +60,7 @@ gen_comp_sup_spec(USAP, DialogueID) ->
 %% when started from TCO
 init({USAP, LocalTID, TCO, SupId}) ->
 	StartName = list_to_atom("tcap_dha_" ++ integer_to_list(LocalTID)),
-	StartArgs = [{local, StartName}, tcap_dha_fsm, [{USAP, LocalTID, TCO, SupId, self()}], []],
+	StartArgs = [{local, StartName}, tcap_dha_fsm, [{USAP, LocalTID, TCO, SupId}], []],
 	StartFunc = {gen_fsm, start_link, StartArgs},
 	ChildSpecComp = gen_comp_sup_spec(USAP, LocalTID),
 	ChildSpec = {dha, StartFunc, permanent, 4000, worker,
@@ -70,7 +70,7 @@ init({USAP, LocalTID, TCO, SupId}) ->
 %% when started from TSM
 init({USAP, LocalTID, TCO}) ->
 	StartName = list_to_atom("tcap_dha_" ++ integer_to_list(LocalTID)),
-	StartArgs = [{local, StartName}, tcap_dha_fsm, {USAP, LocalTID, TCO, self()}, []],
+	StartArgs = [{local, StartName}, tcap_dha_fsm, {USAP, LocalTID, TCO}, []],
 	StartFunc = {gen_fsm, start_link, StartArgs},
 	ChildSpecComp = gen_comp_sup_spec(USAP, LocalTID),
 	ChildSpec = {dha, StartFunc, permanent, 4000, worker,

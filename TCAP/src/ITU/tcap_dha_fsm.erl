@@ -81,9 +81,9 @@
 
 %% Start the Dialogue Handler (DHA) process
 %% reference: Figure A.5/Q.774 (sheet 1 of 11)
-init({USAP, DialogueID, TCO, Supervisor}) ->
-	init({USAP, DialogueID, TCO, undefined, Supervisor});
-init({USAP, DialogueID, TCO, SupId, Supervisor}) ->
+init({USAP, DialogueID, TCO}) ->
+	init({USAP, DialogueID, TCO, undefined});
+init({USAP, DialogueID, TCO, SupId}) ->
 	ets:insert(tcap_dha, {DialogueID, self()}),
 	CCO = list_to_atom("tcap_cco_" ++ integer_to_list(DialogueID)),
 	process_flag(trap_exit, true),
