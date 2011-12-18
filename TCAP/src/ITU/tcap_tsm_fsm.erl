@@ -1,10 +1,11 @@
 %%% $Id: tcap_tsm_fsm.erl,v 1.3 2005/08/04 09:33:17 vances Exp $
 %%%---------------------------------------------------------------------
-%%% @copyright 2004-2005 Motivity Telecom
-%%% @author Vance Shipley <vances@motivity.ca> [http://www.motivity.ca]
+%%% @copyright 2004-2005 Motivity Telecom, 2010-2011 Harald Welte
+%%% @author Vance Shipley <vances@motivity.ca>, Harald Welte <laforge@gnumonks.org>
 %%% @end
 %%%
 %%% Copyright (c) 2004-2005, Motivity Telecom
+%%% Copyright (c) 2010-2011, Harald Welte
 %%% 
 %%% All rights reserved.
 %%% 
@@ -74,11 +75,11 @@
 %%----------------------------------------------------------------------
 
 %% initialize the server
-init({NSAP, USAP, TID, Supervisor, SupRef, TCO}) -> 
+init({NsapFun, USAP, TID, Supervisor, SupRef, TCO}) -> 
 	%% store our process identifier in the global transaction ID table
 	ets:insert(tcap_transaction, {TID, self()}),
 	process_flag(trap_exit, true),
-	{ok, idle, #state{nsap = NSAP, usap = USAP, localTID = TID, supervisor = Supervisor,
+	{ok, idle, #state{nsap = NsapFun, usap = USAP, localTID = TID, supervisor = Supervisor,
 			supref = SupRef, tco = TCO}}.
 
 %%%
@@ -131,7 +132,7 @@ idle({'BEGIN', transaction, BeginParms}, State)
 			sequenceControl = SequenceControl, returnOption = ReturnOption,
 			importance = none, userData = TPDU},
 	%% N-UNITDATA request TSL -> SCCP
-	gen_fsm:send_event(NewState#state.nsap, {'N', 'UNITDATA', request, SccpParms}),
+	send_to_nsap(State, {'N', 'UNITDATA', request, SccpParms}),
 	{next_state, initiation_sent, NewState}.
 
 
@@ -161,7 +162,7 @@ initiation_received({'CONTINUE', transaction, ContParms}, State)
 			sequenceControl = SequenceControl, returnOption = ReturnOption,
 			importance = none, userData = TPDU},
 	%% N-UNITDATA request TSL -> SCCP
-	gen_fsm:send_event(NewState#state.nsap, {'N', 'UNITDATA', request, SccpParms}),
+	send_to_nsap(State, {'N', 'UNITDATA', request, SccpParms}),
 	{next_state, active, NewState};
 
 %% End from TR-User (prearranged)
@@ -183,7 +184,7 @@ initiation_received({'END', transaction, EndParms}, State)
 			sequenceControl = SequenceControl, returnOption = ReturnOption,
 			importance = none, userData = TPDU},
 	%% N-UNITDATA request TSL -> SCCP
-	gen_fsm:send_event(State#state.nsap, {'N', 'UNITDATA', request, SccpParms}),
+	send_to_nsap(State, {'N', 'UNITDATA', request, SccpParms}),
 	{stop, normal, State};
 
 %% Abort from TR-User
@@ -199,7 +200,7 @@ initiation_received({'ABORT', transaction, AbortParms}, State)
 			sequenceControl = SequenceControl, returnOption = ReturnOption,
 			importance = none, userData = TPDU},
 	%% N-UNITDATA request TSL -> SCCP
-	gen_fsm:send_event(State#state.nsap, {'N', 'UNITDATA', request, SccpParms}),
+	send_to_nsap(State, {'N', 'UNITDATA', request, SccpParms}),
 	{stop, normal, State}.
 	
 
@@ -313,7 +314,7 @@ active({'CONTINUE', transaction, ContParms}, State)
 			sequenceControl = SequenceControl, returnOption = ReturnOption,
 			importance = none, userData = TPDU},
 	%% N-UNITDATA request TSL -> SCCP
-	gen_fsm:send_event(State#state.nsap, {'N', 'UNITDATA', request, SccpParms}),
+	send_to_nsap(State, {'N', 'UNITDATA', request, SccpParms}),
 	{next_state, active, State};
 
 %% End from remote
@@ -349,7 +350,7 @@ active({'END', transaction, EndParms}, State)
 			callingAddress = State#state.local_address,
 			sequenceControl = SequenceControl, returnOption = ReturnOption,
 			importance = none, userData = TPDU},
-	gen_fsm:send_event(State#state.nsap, {'N', 'UNITDATA', request, SccpParms}),
+	send_to_nsap(State, {'N', 'UNITDATA', request, SccpParms}),
 	{stop, normal, State};
 
 %% Abort received from remote
@@ -397,7 +398,7 @@ active({'ABORT', transaction, AbortParms}, State)
 			sequenceControl = SequenceControl, returnOption = ReturnOption,
 			importance = none, userData = TPDU},
 	%% N-UNITDATA request TSL -> SCCP
-	gen_fsm:send_event(State#state.nsap, {'N', 'UNITDATA', request, SccpParms}),
+	send_to_nsap(State, {'N', 'UNITDATA', request, SccpParms}),
 	{stop, normal, State}.
 
 
@@ -426,3 +427,8 @@ terminate(_Reason, _StateName, State) ->
 code_change(_OldVsn, StateName, State, _Extra) ->
 	{ok, StateName, State}.
 
+
+%% internal helper function to send a primitive through the NSAP
+send_to_nsap(State, P) when is_record(State, state) ->
+	SendFun = State#state.nsap,
+	SendFun(P).
