@@ -1,10 +1,11 @@
 %%% $Id: tcap_transaction_sup.erl,v 1.2 2005/08/04 09:33:17 vances Exp $
 %%%---------------------------------------------------------------------
-%%% @copyright 2004-2005 Motivity Telecom
-%%% @author Vance Shipley <vances@motivity.ca> [http://www.motivity.ca]
+%%% @copyright 2004-2005 Motivity Telecom, 2010-2011 Harald Welte
+%%% @author Vance Shipley <vances@motivity.ca>, Harald Welte <laforge@gnumonks.org>
 %%% @end
 %%%
 %%% Copyright (c) 2004-2005, Motivity Telecom
+%%% Copyright (c) 2010-2011, Harald Welte
 %%% 
 %%% All rights reserved.
 %%% 
@@ -37,8 +38,8 @@
 %%%---------------------------------------------------------------------
          
 -module(tcap_transaction_sup).
--copyright('Copyright (c) 2003-2005 Motivity Telecom Inc.').
--author('vances@motivity.ca').
+-copyright('Copyright (c) 2003-2005 Motivity Telecom Inc., 2010-2011 Harald Welte').
+-author('vances@motivity.ca, laforge@gnumonks.org').
 -vsn('$Revision: 1.2 $').
 
 -behaviour(supervisor).
@@ -46,9 +47,9 @@
 %% call backs needed for supervisor behaviour
 -export([init/1]).
 
-init({NSAP, USAP, TID, SupRef}) ->
+init([NSAP, USAP, TID, TCO]) ->
 	Name = list_to_atom("tcap_tsm_" ++ integer_to_list(TID)),
-	StartArgs = [{local, Name}, tcap_tsm_fsm, [NSAP, USAP, TID, self(), SupRef], []],
+	StartArgs = [{local, Name}, tcap_tsm_fsm, [NSAP, USAP, TID, self(), TCO], []],
 	StartFunc = {gen_fsm, start_link, StartArgs},
 	ChildSpec = {Name, StartFunc, permanent, 1000, worker, [tcap_tsm_fsm]},
 	{ok,{{one_for_all, 0, 1}, [ChildSpec]}}.

@@ -46,8 +46,8 @@
 %%%
 
 -module(tcap_tsm_fsm).
--copyright('Copyright (c) 2004-2005 Motivity Telecom Inc.').
--author('vances@motivity.ca').
+-copyright('Copyright (c) 2004-2005 Motivity Telecom Inc., 2010-2011 Harald Welte').
+-author('vances@motivity.ca, laforge@gnumonks.org').
 -vsn('$Revision: 1.3 $').
 
 -behaviour(gen_fsm).
@@ -67,7 +67,7 @@
 -include("TCAPMessages.hrl").
 
 %% the transaction_fsm state data
--record(state, {nsap, usap, tco, supervisor, supref, localTID, remoteTID,
+-record(state, {nsap, usap, tco, dha_sup, supref, localTID, remoteTID,
 		local_address, remote_address, dha}).
 
 %%----------------------------------------------------------------------
@@ -75,11 +75,11 @@
 %%----------------------------------------------------------------------
 
 %% initialize the server
-init({NsapFun, USAP, TID, Supervisor, SupRef, TCO}) -> 
+init([NsapFun, USAP, TID, SupRef, TCO]) ->
 	%% store our process identifier in the global transaction ID table
 	ets:insert(tcap_transaction, {TID, self()}),
 	process_flag(trap_exit, true),
-	{ok, idle, #state{nsap = NsapFun, usap = USAP, localTID = TID, supervisor = Supervisor,
+	{ok, idle, #state{nsap = NsapFun, usap = USAP, localTID = TID,
 			supref = SupRef, tco = TCO}}.
 
 %%%
@@ -99,7 +99,7 @@ idle({'BEGIN', received, SccpParms}, State)
 	StartFunc = {supervisor, start_link,
 			[tcap_dialogue_sup, [{State#state.usap, State#state.localTID, self()}]]},
 	ChildSpec = {SupId, StartFunc, permanent, infinity, supervisor, [dialogue_sup]},
-	{ok, DHA} = supervisor:start_child(State#state.supervisor, ChildSpec),
+	{ok, DHA} = supervisor:start_child(State#state.supref, ChildSpec),
 	QOS = {SccpParms#'N-UNITDATA'.sequenceControl, SccpParms#'N-UNITDATA'.returnOption},
 	UserData = #'TR-user-data'{dialoguePortion = Begin#'Begin'.dialoguePortion,
 			componentPortion = Begin#'Begin'.components},
@@ -421,7 +421,7 @@ handle_info(Info, StateName, State) ->
 terminate(_Reason, _StateName, State) ->
 	ets:delete(tcap_transaction, State#state.localTID),
 	%% signal TCO that we are stopping
-	gen_server:cast(State#state.supervisor, {'tsm-stopped', State#state.supref}).
+	gen_server:cast(State#state.tco, {'tsm-stopped', State#state.supref}).
 
 %% handle updating state data due to a code replacement
 code_change(_OldVsn, StateName, State, _Extra) ->

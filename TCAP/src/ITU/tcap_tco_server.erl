@@ -1,10 +1,11 @@
 %%% $Id: tcap_tco_server.erl,v 1.7 2005/08/04 09:33:17 vances Exp $
 %%%---------------------------------------------------------------------
-%%% @copyright 2004-2005 Motivity Telecom
-%%% @author Vance Shipley <vances@motivity.ca> [http://www.motivity.ca]
+%%% @copyright 2004-2005 Motivity Telecom, 2010-2011 Harald Welte
+%%% @author Vance Shipley <vances@motivity.ca>, Harald Welte <laforge@gnumonks.org>
 %%% @end
 %%%
 %%% Copyright (c) 2004-2005, Motivity Telecom
+%%% Copyright (c) 2010-2011, Harald Welte
 %%% 
 %%% All rights reserved.
 %%% 
@@ -511,7 +512,7 @@ handle_cast({'TR', 'BEGIN', request, BeginParams}, State)
 		when is_record(BeginParams, 'TR-BEGIN') ->
 	% Create a Transaction State Machine (TSM)
 	OTID = BeginParams#'TR-BEGIN'.transactionID,
-	ChildName = list_to_atom("tsm_" ++ integer_to_list(OTID)),
+	ChildName = list_to_atom("tcap_trans_sup_" ++ integer_to_list(OTID)),
 	%%%% FIXME {ok, {M, F, A, Mods}} = application:get_env(start_tsm),
 	StartFunc = get_start(out_transaction, OTID, State),
 	ChildSpec = {ChildName, StartFunc, temporary, 1000, worker, [tcap_tsm_fsm]},
@@ -648,18 +649,19 @@ get_start(in_transaction, TransactionID, State) ->
 			SendFun = fun(P) -> Module:send_primitive(P, State#state.ext_state) end,
 			StartDHA = get_start(dialogue, TransactionID, State),
 			StartArgs = [TransactionID, SendFun, StartDHA],
-			{gen_fsm, start_link, [tcap_dha_fsm, StartArgs, []]}
+			{gen_fsm, start_link, [tcap_tsm_fsm, StartArgs, []]}
 	end;
-get_start(out_transaction, TransactionID, State) ->
-	Module = State#state.module,
+get_start(out_transaction, TransactionID, State) when is_record(State, state) ->
+	#state{module = Module, supervisor = Sup} = State,
 	case erlang:function_exported(Module, start_transaction, 1) of
 		true ->
 			Module:start_transaction(TransactionID, State#state.ext_state);
 		false ->
 			SendFun = fun(P) -> Module:send_primitive(P, State#state.ext_state) end,
 			StartDHA = get_start(dialogue, TransactionID, State),
-			StartArgs = [TransactionID, SendFun, StartDHA],
-			{gen_fsm, start_link, [tcap_dha_fsm, StartArgs, []]}
+			% FIXME: use StartDHA and pass it into transaction_sup->tsm_fsm
+			StartArgs = [SendFun, fixme_no_usap, TransactionID, self()],
+			{supervisor, start_link, [tcap_transaction_sup, StartArgs]}
 	end.
 
 %%----------------------------------------------------------------------
