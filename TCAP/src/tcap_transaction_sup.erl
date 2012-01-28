@@ -47,10 +47,19 @@
 %% call backs needed for supervisor behaviour
 -export([init/1]).
 
-init([NSAP, USAP, TID, TCO]) ->
+gen_tsm_childspec(NSAP, USAP, TID, TCO) ->
 	Name = list_to_atom("tcap_tsm_" ++ integer_to_list(TID)),
 	StartArgs = [{local, Name}, tcap_tsm_fsm, [NSAP, USAP, TID, self(), TCO], []],
 	StartFunc = {gen_fsm, start_link, StartArgs},
-	ChildSpec = {Name, StartFunc, permanent, 1000, worker, [tcap_tsm_fsm]},
-	{ok,{{one_for_all, 0, 1}, [ChildSpec]}}.
+	{Name, StartFunc, permanent, 1000, worker, [tcap_tsm_fsm]}.
 
+gen_dha_sup_childspec(_NSAP, User, LocalTID, TCO) ->
+	Name = "tcap_dha_" ++ integer_to_list(LocalTID),
+	StartArgs = [{local, Name}, tcap_dialogue_sup, {User, LocalTID, TCO}],
+	StartFunc = {supervisor, start_link, StartArgs},
+	{dha_sup, StartFunc, permanent, 1000, worker, [tcap_dialogue_sup]}.
+
+init([NSAPfun, USAP, TID, TCO]) ->
+	TsmChild = gen_tsm_childspec(NSAPfun, USAP, TID, TCO),
+	DhaSupChild = gen_dha_sup_childspec(NSAPfun, USAP, TID, TCO),
+	{ok,{{one_for_all, 0, 1}, [TsmChild, DhaSupChild]}}.
