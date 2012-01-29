@@ -120,11 +120,14 @@ idle({'BEGIN', transaction, BeginParms}, State)
 	%% NOTE - This may be provided by TC-user or be implicitly associated with
 	%%        the access point at which the N-UNITDATA primitive is issued. 
 	NewState = State#state{local_address = BeginParms#'TR-BEGIN'.origAddress},
-	DialoguePortion = (BeginParms#'TR-BEGIN'.userData)#'TR-user-data'.dialoguePortion,
-	ComponentPortion = (BeginParms#'TR-BEGIN'.userData)#'TR-user-data'.componentPortion,
-	Begin = #'Begin'{otid = State#state.localTID, dialoguePortion = DialoguePortion,
+	TrUserData = process_undefined (BeginParms#'TR-BEGIN'.userData),
+	DialoguePortion = TrUserData#'TR-user-data'.dialoguePortion,
+	ComponentPortion = TrUserData#'TR-user-data'.componentPortion,
+	Otid = State#state.localTID,
+	Begin = #'Begin'{otid = <<Otid:32/big>>, dialoguePortion = DialoguePortion,
 			components = ComponentPortion},
 	%% Assemble TR-portion of BEGIN message
+	io:format("Trying to encode ~p~n", [Begin]),
 	{ok, TPDU} = 'TR':encode('TCMessage', {'begin', Begin}),
 	{SequenceControl, ReturnOption} = BeginParms#'TR-BEGIN'.qos,
 	SccpParms = #'N-UNITDATA'{calledAddress = BeginParms#'TR-BEGIN'.destAddress,
@@ -151,9 +154,13 @@ initiation_received({'CONTINUE', transaction, ContParms}, State)
 		NewAddress ->
 			NewState = State#state{local_address = NewAddress}
 	end,
-	DialoguePortion = (ContParms#'TR-CONTINUE'.userData)#'TR-user-data'.dialoguePortion,
-	ComponentPortion = (ContParms#'TR-CONTINUE'.userData)#'TR-user-data'.componentPortion,
-	Continue = #'Continue'{otid = State#state.localTID, dialoguePortion = DialoguePortion, components = ComponentPortion},
+	TrUserData = process_undefined(ContParms#'TR-CONTINUE'.userData),
+	DialoguePortion = TrUserData#'TR-user-data'.dialoguePortion,
+	ComponentPortion = TrUserData#'TR-user-data'.componentPortion,
+	Otid = State#state.localTID,
+	Dtid = State#state.remoteTID,
+	Continue = #'Continue'{otid = <<Otid:32/big>>, dtid = <<Dtid:32/big>>,
+				dialoguePortion = DialoguePortion, components = ComponentPortion},
 	%% Assemble TR-portion of CONTINUE message
 	{ok, TPDU} = 'TR':encode('TCMessage', {continue, Continue}),
 	{SequenceControl, ReturnOption} = ContParms#'TR-CONTINUE'.qos,
@@ -173,8 +180,9 @@ initiation_received({'END', transaction, EndParms}, State)
 %% End from TR-User (not prearranged)
 initiation_received({'END', transaction, EndParms}, State)
 		when is_record(EndParms, 'TR-END') ->
-	DialoguePortion = (EndParms#'TR-END'.userData)#'TR-user-data'.dialoguePortion,
-	ComponentPortion = (EndParms#'TR-END'.userData)#'TR-user-data'.componentPortion,
+	TrUserData = process_undefined(EndParms#'TR-END'.userData),
+	DialoguePortion = TrUserData#'TR-user-data'.dialoguePortion,
+	ComponentPortion = TrUserData#'TR-user-data'.componentPortion,
 	End = #'End'{dialoguePortion = DialoguePortion, components = ComponentPortion},
 	%% Assemble TR-portion of END message
 	{ok, TPDU} = 'TR':encode('TCMessage', {'end', End}),
@@ -190,7 +198,8 @@ initiation_received({'END', transaction, EndParms}, State)
 %% Abort from TR-User
 initiation_received({'ABORT', transaction, AbortParms}, State)
 		when is_record(AbortParms, 'TR-U-ABORT') ->
-	Cause = (AbortParms#'TR-U-ABORT'.userData)#'TR-user-data'.dialoguePortion,
+	TrUserData = process_undefined(AbortParms#'TR-U-ABORT'.userData),
+	Cause = TrUserData#'TR-user-data'.dialoguePortion,
 	Abort = #'Abort'{reason = {'u-abortCause', Cause}},
 	%% Assemble TR-portion of ABORT message
 	{ok, TPDU} = 'TR':encode('TCMessage', {abort, Abort}),
@@ -303,8 +312,9 @@ active({'CONTINUE', received, SccpParms}, State)
 %% Continue from TR-User
 active({'CONTINUE', transaction, ContParms}, State)
 		when is_record(ContParms, 'TR-CONTINUE') ->
-	DialoguePortion = (ContParms#'TR-CONTINUE'.userData)#'TR-user-data'.dialoguePortion,
-	ComponentPortion = (ContParms#'TR-CONTINUE'.userData)#'TR-user-data'.componentPortion,
+	TrUserData = process_undefined(ContParms#'TR-CONTINUE'.userData),
+	DialoguePortion = TrUserData#'TR-user-data'.dialoguePortion,
+	ComponentPortion = TrUserData#'TR-user-data'.componentPortion,
 	Continue = #'Continue'{dialoguePortion = DialoguePortion, components = ComponentPortion},
 	%% Assemble TR-portion of CONTINUE message
 	{ok, TPDU} = 'TR':encode('TCMessage', {continue, Continue}),
@@ -340,8 +350,9 @@ active({'END', transaction, EndParms}, State)
 %% End from TR-User (not prearranged)
 active({'END', transaction, EndParms}, State)
 		when is_record(EndParms, 'TR-END') ->
-	DialoguePortion = (EndParms#'TR-END'.userData)#'TR-user-data'.dialoguePortion,
-	ComponentPortion = (EndParms#'TR-END'.userData)#'TR-user-data'.componentPortion,
+	TrUserData = process_undefined(EndParms#'TR-END'.userData),
+	DialoguePortion = TrUserData#'TR-user-data'.dialoguePortion,
+	ComponentPortion = TrUserData#'TR-user-data'.componentPortion,
 	End = #'End'{dialoguePortion = DialoguePortion, components = ComponentPortion},
 	%% Assemble TR-portion of END message
 	{ok, TPDU} = 'TR':encode('TCMessage', {'end', End}),
@@ -388,7 +399,8 @@ active({'local-abort', received, Cause}, State) ->
 %% Abort from TR-User
 active({'ABORT', transaction, AbortParms}, State) 
 		when is_record(AbortParms, 'TR-U-ABORT') ->
-	Cause = (AbortParms#'TR-U-ABORT'.userData)#'TR-user-data'.dialoguePortion,
+	TrUserData = process_undefined(AbortParms#'TR-U-ABORT'.userData),
+	Cause = TrUserData#'TR-user-data'.dialoguePortion,
 	Abort = #'Abort'{reason = {'u-abortCause', Cause}},
 	%% Assemble TR-portion of ABORT message
 	{ok, TPDU} = 'TR':encode('TCMessage', {abort, Abort}),
@@ -432,3 +444,8 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 send_to_nsap(State, P) when is_record(State, state) ->
 	SendFun = State#state.nsap,
 	SendFun(P).
+
+process_undefined(U = #'TR-user-data'{dialoguePortion = undefined}) ->
+	U#'TR-user-data'{dialoguePortion = asn1_NOVALUE};
+process_undefined(U = #'TR-user-data'{}) ->
+	U.
