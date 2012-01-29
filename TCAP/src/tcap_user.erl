@@ -53,8 +53,11 @@
 get_or_start_dha(TCO, DialgId) ->
 	case ets:lookup(tcap_dha, DialgId) of
 	    [] ->
-		% start new DHA FSM for this dialogue; it will start CCO
-		start_new_dha(TCO, DialgId);
+		% ask TCO to start new transaction_sup, which will start
+		% dialogue_sup, which will start dha_fsm
+		gen_server:call(TCO, {local_new_trans, DialgId}),
+		[{DialgId, DHA}] = ets:lookup(tcap_dha, DialgId),
+		DHA;
 	    [{DialgId, DHA}] ->
 		DHA
 	end.

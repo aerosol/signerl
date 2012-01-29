@@ -214,6 +214,13 @@ handle_call(dialogueID, From, State) ->
 % shutdown the server
 handle_call(stop, _From, State) ->
 	{stop, shutdown, ok, State};
+handle_call({local_new_trans, OTID}, Usap, State) ->
+	% Create a Transaction State Machine (TSM)
+	ChildName = list_to_atom("tcap_trans_sup_" ++ integer_to_list(OTID)),
+	StartFunc = get_start(out_transaction, [OTID, Usap] , State),
+	ChildSpec = {ChildName, StartFunc, temporary, 1000, worker, [tcap_tsm_fsm]},
+	Ret = supervisor:start_child(State#state.supervisor, ChildSpec),
+	{reply, Ret, State};
 % unknown request
 handle_call(Request, From, State) ->
 	Module = State#state.module,
@@ -508,15 +515,11 @@ handle_cast({'TR', 'UNI', request, UniParams}, State)
 					{components, ComponentPortion}]),
 			{noreply, State}
 	end;
-handle_cast({'TR', 'BEGIN', request, BeginParams}, State) 
+handle_cast({'TR', 'BEGIN', request, BeginParams}, State)
 		when is_record(BeginParams, 'TR-BEGIN') ->
 	% Create a Transaction State Machine (TSM)
-	OTID = BeginParams#'TR-BEGIN'.transactionID,
-	ChildName = list_to_atom("tcap_trans_sup_" ++ integer_to_list(OTID)),
-	%%%% FIXME {ok, {M, F, A, Mods}} = application:get_env(start_tsm),
-	StartFunc = get_start(out_transaction, OTID, State),
-	ChildSpec = {ChildName, StartFunc, temporary, 1000, worker, [tcap_tsm_fsm]},
-	{ok, TSM} = supervisor:start_child(State#state.supervisor, ChildSpec),
+	TransactionID = BeginParams#'TR-BEGIN'.transactionID,
+	TSM  = ets:lookup_element(tcap_transaction, TransactionID, 2),
 	gen_fsm:send_event(TSM, {'BEGIN', transaction, BeginParams}),
 	{noreply, State};
 handle_cast({'TR', 'CONTINUE', request, ContParams}, State)
@@ -537,7 +540,7 @@ handle_cast({'TR', 'U-ABORT', request, AbortParams}, State)
 	TSM  = ets:lookup_element(tcap_transaction, TransactionID, 2),
 	gen_fsm:send_event(TSM, {'ABORT', transaction, AbortParams}),
 	{noreply, State};
-	
+
 %
 % The TSM sends us a message as it's last action so
 % we can remove the supervisor child specification
@@ -651,7 +654,7 @@ get_start(in_transaction, TransactionID, State) ->
 			StartArgs = [TransactionID, SendFun, StartDHA],
 			{gen_fsm, start_link, [tcap_tsm_fsm, StartArgs, []]}
 	end;
-get_start(out_transaction, TransactionID, State) when is_record(State, state) ->
+get_start(out_transaction, [TransactionID, Usap], State) when is_record(State, state) ->
 	#state{module = Module, supervisor = Sup} = State,
 	case erlang:function_exported(Module, start_transaction, 1) of
 		true ->
@@ -660,7 +663,7 @@ get_start(out_transaction, TransactionID, State) when is_record(State, state) ->
 			SendFun = fun(P) -> Module:send_primitive(P, State#state.ext_state) end,
 			StartDHA = get_start(dialogue, TransactionID, State),
 			% FIXME: use StartDHA and pass it into transaction_sup->tsm_fsm
-			StartArgs = [SendFun, fixme_no_usap, TransactionID, self()],
+			StartArgs = [SendFun, Usap, TransactionID, self()],
 			{supervisor, start_link, [tcap_transaction_sup, StartArgs]}
 	end.
 
