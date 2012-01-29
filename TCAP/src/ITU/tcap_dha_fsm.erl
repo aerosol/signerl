@@ -107,7 +107,7 @@ idle({'TC', 'UNI', request, UniParms}, State)
 	TrParms = #'TR-UNI'{qos = UniParms#'TC-UNI'.qos,
 			destAddress = UniParms#'TC-UNI'.destAddress,
 			origAddress = UniParms#'TC-UNI'.origAddress,
-			userData = #'TR-user-data'{dialoguePortion = DialoguePortion}},
+			userData = #'TR-user-data'{dialoguePortion = dialogue_ext(DialoguePortion)}},
 	NewState = State#state{parms = TrParms},
 	%% Request components to CHA
 	gen_server:cast(NewState#state.cco, 'request-components'),
@@ -119,21 +119,22 @@ idle({'TC', 'UNI', request, UniParms}, State)
 idle({'TC', 'BEGIN', request, BeginParms}, State) 
 		when is_record(BeginParms, 'TC-BEGIN') ->
 	%% Dialogue info included?
-	case BeginParms#'TC-BEGIN'.userInfo of
+	case BeginParms#'TC-BEGIN'.appContextName of
 		undefined ->
 			DialoguePortion = undefined;
-		UserInfo when is_binary(UserInfo) ->
+		ACtx ->
+			UserInfo = osmo_util:asn_val(BeginParms#'TC-BEGIN'.userInfo),
 			%% Set protocol version = 1
 			%% Build AARQ apdu
-			DialoguePortion = 'DialoguePDUs':encode('AARQ-apdu',
-					#'AARQ-apdu'{'protocol-version' = version1,
-					'application-context-name' = BeginParms#'TC-BEGIN'.appContextName,
+			{ok, DialoguePortion} = 'DialoguePDUs':encode('AARQ-apdu',
+					#'AARQ-apdu'{'protocol-version' = [version1],
+					'application-context-name' = ACtx,
 					'user-information' = UserInfo})
 	end,
 	TrParms = #'TR-BEGIN'{qos = BeginParms#'TC-BEGIN'.qos,
 			destAddress = BeginParms#'TC-BEGIN'.destAddress,
 			origAddress = BeginParms#'TC-BEGIN'.origAddress,
-			userData = #'TR-user-data'{dialoguePortion = DialoguePortion}},
+			userData = #'TR-user-data'{dialoguePortion = dialogue_ext(DialoguePortion)}},
 	NewState = State#state{parms = TrParms,
 			%% Set application context mode
 			appContextMode = BeginParms#'TC-BEGIN'.appContextName},
@@ -199,7 +200,7 @@ idle({'TR', 'BEGIN', indication, BeginParms}, State) when is_record(BeginParms, 
 			%% Discard components
 			%% TR-U-ABORT request to TSL
 			TrParms = {transactionID = BeginParms#'TR-BEGIN'.transactionID,
-					userData = #'TR-user-data'{dialoguePortion = ABRT}},
+					userData = #'TR-user-data'{dialoguePortion = dialogue_ext(ABRT)}},
 			NewState = State#state{otid = BeginParms#'TR-BEGIN'.transactionID, parms = TrParms},
 			gen_server:cast(NewState#state.tco, {'TR', 'U-ABORT', request, TrParms}),
 			%% Dialogue terminated to CHA
@@ -273,7 +274,7 @@ initiation_received({'TC', 'CONTINUE', request, ContParms}, State) when is_recor
 			TrParms = #'TR-CONTINUE'{qos = ContParms#'TC-CONTINUE'.qos,
 					origAddress = ContParms#'TR-CONTINUE'.origAddress,
 					transactionID = State#state.otid,
-					userData = #'TR-user-data'{dialoguePortion = DialoguePortion}},
+					userData = #'TR-user-data'{dialoguePortion = dialogue_ext(DialoguePortion)}},
 			NewState = State#state{parms = TrParms};
 		undefined ->
 			NewState = State
@@ -309,7 +310,8 @@ initiation_received({'TC', 'END', request, EndParms}, State) when is_record(EndP
 					TrParms = #'TR-END'{qos = EndParms#'TC-END'.qos,
 							transactionID = State#state.otid,
 							termination = EndParms#'TC-END'.termination,
-							userData = #'TR-user-data'{dialoguePortion = DialoguePortion}},
+							userData = #'TR-user-data'{dialoguePortion =
+											dialogue_ext(DialoguePortion)}},
 					NewState = State#state{parms = TrParms};
 				undefined ->
 					NewState = State
@@ -339,7 +341,7 @@ initiation_received({'TC', 'U-ABORT', request, AbortParms}, State) when is_recor
 					'application-context-name' = AbortParms#'TC-U-ABORT'.appContextName,
 					result = 'reject-permanent',
 					'result-source-diagnostic' = {'dialogue-service-user', 'application-context-name-not-supported'}}),
-			UserData = #'TR-user-data'{dialoguePortion = AARE};
+			UserData = #'TR-user-data'{dialoguePortion = dialogue_ext(AARE)};
 		_AppContextName when AbortParms#'TC-U-ABORT'.abortReason == dialogueRefused ->
 			%% Set protocol version = 1
 			%% Build AARE-pdu (rejected)
@@ -348,13 +350,13 @@ initiation_received({'TC', 'U-ABORT', request, AbortParms}, State) when is_recor
 					'application-context-name' = AbortParms#'TC-U-ABORT'.appContextName,
 					result = 'reject-permanent',
 					'result-source-diagnostic' = {'dialogue-service-user', null}}),
-			UserData = #'TR-user-data'{dialoguePortion = AARE};
+			UserData = #'TR-user-data'{dialoguePortion = dialogue_ext(AARE)};
 		_AppContextName when AbortParms#'TC-U-ABORT'.abortReason == userSpecified ->
 			%% Build ABRT-apdu (abort source = dialogue-service-user)
 			ABRT = 'DialoguePDUs':encode('ABRT-apdu',
 					#'ABRT-apdu'{'abort-source' = 'dialogue-service-user',
 					'user-information' = AbortParms#'TC-U-ABORT'.userInfo}),
-			UserData = #'TR-user-data'{dialoguePortion = ABRT}
+			UserData = #'TR-user-data'{dialoguePortion = dialogue_ext(ABRT)}
 	end,
 	%% TR-U-ABORT request to TSL
 	TrParms = #'TR-U-ABORT'{qos = AbortParms#'TC-U-ABORT'.qos,
@@ -489,7 +491,7 @@ initiation_sent({'TR', 'CONTINUE', indication, ContParms}, State) when is_record
 			%% Build ABRT apdu
 			ABRT = 'DialoguePDUs':encode('ABRT-apdu',
 					#'ABRT-apdu'{'abort-source' = 'dialogue-service-provider'}),
-			UserData = #'TR-user-data'{dialoguePortion = ABRT},
+			UserData = #'TR-user-data'{dialoguePortion = dialogue_ext(ABRT)},
 			%% TR-U-ABORT request to TSL
 			TrParms = #'TR-U-ABORT'{qos = ContParms#'TC-U-ABORT'.qos,
 					transactionID = NewState#state.otid, userData = UserData},
@@ -835,3 +837,14 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 % front-end function called by tcap_user to get CCO for given DHA
 get_cco_pid(DHA) ->
 	gen_fsm:sync_send_all_state_event(DHA, get_cco_pid).
+
+
+% Wrap encoded DialoguePortion in EXTERNAL ASN.1 data type
+dialogue_ext(undefined) ->
+	asn1_NOVALUE;
+dialogue_ext(asn1_NOVALUE) ->
+	asn1_NOVALUE;
+dialogue_ext(DlgEnc) ->
+	#'EXTERNAL'{'direct-reference' = {0,0,17,773,1,1,1},
+		    'indirect-reference' = asn1_NOVALUE,
+		    'encoding' = {'single-ASN1-type', DlgEnc}}.
