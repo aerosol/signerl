@@ -54,7 +54,7 @@ gen_tsm_childspec(NSAP, USAP, TID, TCO) ->
 	{Name, StartFunc, permanent, 1000, worker, [tcap_tsm_fsm]}.
 
 gen_dha_sup_childspec(_NSAP, User, LocalTID, TCO) ->
-	Name = "tcap_dha_" ++ integer_to_list(LocalTID),
+	Name = list_to_atom("tcap_dialogue_sup_" ++ integer_to_list(LocalTID)),
 	StartArgs = [{local, Name}, tcap_dialogue_sup, {User, LocalTID, TCO}],
 	StartFunc = {supervisor, start_link, StartArgs},
 	{dha_sup, StartFunc, permanent, 1000, worker, [tcap_dialogue_sup]}.
