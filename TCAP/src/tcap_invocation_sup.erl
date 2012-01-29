@@ -47,15 +47,15 @@
 -export([init/1]).
 
 %% API to other modules
--export([start_ism/5, start_link/1]).
+-export([start_ism/6, start_link/1]).
 
 init([]) ->
 	{ok,{{one_for_all, 0, 1}, []}}.
 
-start_ism(USAP, DlgId, InvokeID, OpClass, Timeout) ->
+start_ism(USAP, DlgId, InvokeID, CcoPid, OpClass, Timeout) ->
 	SupRef = list_to_atom("tcap_invocation_sup_" ++ integer_to_list(DlgId)),
-	StartArgs = [USAP, DlgId, InvokeID, OpClass, Timeout],
-	StartFunc = {tcap_ism_fsm, start_link, StartArgs},
+	StartArgs = [USAP, DlgId, InvokeID, CcoPid, OpClass, Timeout],
+	StartFunc = {gen_fsm, start_link, [tcap_ism_fsm, StartArgs, [{debug,[trace]}]]},
 	ChildSpec = {ism, StartFunc, temporary, 4000, worker,
 			[tcap_ism_sup]},
 	supervisor:start_child(SupRef, ChildSpec).
