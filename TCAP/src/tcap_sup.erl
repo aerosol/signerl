@@ -64,4 +64,5 @@ init(_Args) ->
 	StartFunc = {tcap_sap_sup, start_link, []},
 	%	    {Id, StartFunc, Restart, Shutdown, Tpype, Modules}
 	ChildSpec = {tcap_sap_sup, StartFunc, permanent, infinity, supervisor, [tcap_sap_sup]},
+	% simple_one_for_one will not start any children!
 	{ok,{{simple_one_for_one, 10, 60}, [ChildSpec]}}.
