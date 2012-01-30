@@ -382,7 +382,7 @@ handle_cast({'N', 'UNITDATA', indication, UdataParams}, State)
 %			end;
 		{ok, {'end', TPDU = #'End'{dtid = Dtid}}} ->
 			% DTID assigned?
-			case catch ets:lookup(tcap_transaction, decode_tid(Dtid), 2) of
+			case ets:lookup_element(tcap_transaction, decode_tid(Dtid), 2) of
 				{error, _Reason}  ->
 					error_logger:error_report(["DTID not found in received N-END",
 								{dtid, Dtid},
