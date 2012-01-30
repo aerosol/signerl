@@ -122,8 +122,9 @@ handle_cast('dialogue-terminated', State) ->
 	%	* automatically released
 	% if any ISM active, terminate ISM
 	%	* ISMs are linked, they should terminate
+	terminate_ISMs(State#state.ism),
 	% terminate
-	{stop, dialogue_terminated, State};
+	{stop, normal, State};
 
 % from TCL -> CHA (CCO): TC-RESULT-{L,NL}, U-ERROR
 handle_cast({'TC', Req, request, Param}, State) when 
@@ -276,6 +277,12 @@ terminate_active_ISM(ISMs, InvId) ->
 	    false ->
 		ISMs
 	end.
+
+terminate_ISMs([]) ->
+	ok;
+terminate_ISMs([{_Id, ISM}|Tail]) ->
+	gen_fsm:send_event(ISM, terminate),
+	terminate_ISMs(Tail).
 
 % Convert from user-visible primitive records to asn1ct-generated record
 uprim_to_asn_rec(Uprim) when is_record(Uprim, 'TC-INVOKE') ->
