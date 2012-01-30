@@ -68,7 +68,7 @@
 
 %% the transaction_fsm state data
 -record(state, {nsap, usap, tco, dha_sup, supref, localTID, remoteTID,
-		local_address, remote_address, dha}).
+		local_address, remote_address}).
 
 %%----------------------------------------------------------------------
 %%  The gen_fsm call backs
@@ -77,6 +77,7 @@
 %% initialize the server
 init([NsapFun, USAP, TID, SupRef, TCO]) ->
 	%% store our process identifier in the global transaction ID table
+	io:format("Inserting {~p, ~p} into tcap_transactions~n", [TID, self()]),
 	ets:insert(tcap_transaction, {TID, self()}),
 	process_flag(trap_exit, true),
 	{ok, idle, #state{nsap = NsapFun, usap = USAP, localTID = TID,
@@ -94,12 +95,6 @@ idle({'BEGIN', received, SccpParms}, State)
 	NewState = State#state{remote_address = SccpParms#'N-UNITDATA'.callingAddress,
 			remoteTID = (SccpParms#'N-UNITDATA'.userData)#'Begin'.otid},
 	{ok, Begin} = 'TR':decode('TCMessage', SccpParms#'N-UNITDATA'.userData),
-	%% Start a Dialogue Handler (DHA)
-	SupId = list_to_atom("dha_sup_" ++ integer_to_list(State#state.localTID)),
-	StartFunc = {supervisor, start_link,
-			[tcap_dialogue_sup, [{State#state.usap, State#state.localTID, self()}]]},
-	ChildSpec = {SupId, StartFunc, permanent, infinity, supervisor, [dialogue_sup]},
-	{ok, DHA} = supervisor:start_child(State#state.supref, ChildSpec),
 	QOS = {SccpParms#'N-UNITDATA'.sequenceControl, SccpParms#'N-UNITDATA'.returnOption},
 	UserData = #'TR-user-data'{dialoguePortion = Begin#'Begin'.dialoguePortion,
 			componentPortion = Begin#'Begin'.components},
@@ -109,8 +104,8 @@ idle({'BEGIN', received, SccpParms}, State)
 			transactionID = State#state.localTID,
 			userData = UserData},
 	%% TR-BEGIN CSL <- TSL
-	gen_fsm:send_event(DHA, {'TR', 'BEGIN', indication, TrParms}),
-	{next_state, initiation_received, NewState#state{dha = DHA}};
+	gen_fsm:send_event(resolve_dha(NewState), {'TR', 'BEGIN', indication, TrParms}),
+	{next_state, initiation_received, NewState};
 
 %% started by TR-User
 %% reference: Figure A.4/Q.774 (sheet 1 of 5)
@@ -222,18 +217,18 @@ initiation_received({'ABORT', transaction, AbortParms}, State)
 initiation_sent({'CONTINUE', received, SccpParms}, State)
 		when is_record(SccpParms, 'N-UNITDATA') ->
 	%% Store remote address and remote TID
-	OTID = (SccpParms#'N-UNITDATA'.userData)#'Continue'.otid,
+	Continue = SccpParms#'N-UNITDATA'.userData,
+	OTID = Continue#'Continue'.otid,
 	NewState = State#state{ remote_address
 			= SccpParms#'N-UNITDATA'.callingAddress, remoteTID = OTID},
 	QOS = {SccpParms#'N-UNITDATA'.sequenceControl,
 			SccpParms#'N-UNITDATA'.returnOption},
-	{ok, Continue} = 'TR':decode('TCMessage', SccpParms#'N-UNITDATA'.userData),
 	UserData = #'TR-user-data'{dialoguePortion = Continue#'Continue'.dialoguePortion,
-			componentPortion = Continue #'Continue'.components},
+				   componentPortion = Continue#'Continue'.components},
 	TrParms = #'TR-CONTINUE'{qos = QOS,
 			transactionID = State#state.localTID,
 			userData = UserData},
-	gen_fsm:send_event(NewState#state.dha, {'TR', 'CONTINUE', indication, TrParms}),
+	gen_fsm:send_event(resolve_dha(NewState), {'TR', 'CONTINUE', indication, TrParms}),
 	{next_state, active, NewState};
 
 %% End from remote
@@ -241,13 +236,13 @@ initiation_sent({'END', received, SccpParms}, State)
 		when is_record(SccpParms, 'N-UNITDATA') ->
 	QOS = {SccpParms#'N-UNITDATA'.sequenceControl,
 			SccpParms#'N-UNITDATA'.returnOption},
-	{ok, End} = 'TR':decode('TCMessage', SccpParms#'N-UNITDATA'.userData),
+	End = SccpParms#'N-UNITDATA'.userData,
 	UserData = #'TR-user-data'{dialoguePortion = End#'End'.dialoguePortion,
 			componentPortion = End#'End'.components},
 	TrParms = #'TR-END'{qos = QOS,
 			transactionID = State#state.localTID,
 			userData = UserData},
-	gen_fsm:send_event(State#state.dha, {'TR', 'END', indication, TrParms}),
+	gen_fsm:send_event(resolve_dha(State), {'TR', 'END', indication, TrParms}),
 	{stop, normal, State};
 
 %% Abort from remote
@@ -255,27 +250,27 @@ initiation_sent({'ABORT', received, SccpParms}, State)
 		when is_record(SccpParms, 'N-UNITDATA') ->
 	QOS = {SccpParms#'N-UNITDATA'.sequenceControl,
 			SccpParms#'N-UNITDATA'.returnOption},
-	{ok, Abort} = 'TR':decode('TCMessage', SccpParms#'N-UNITDATA'.userData),
+	Abort = SccpParms#'N-UNITDATA'.userData,
 	%% TR-U-ABORT?
 	case Abort#'Abort'.reason of
 		{'p-abortCause', Cause} ->
 			TrParms = #'TR-P-ABORT'{qos = QOS,
 					transactionID = State#state.localTID,
 					pAbort = Cause},
-			gen_fsm:send_event(State#state.dha, {'TR', 'P-ABORT', indication, TrParms});
+			gen_fsm:send_event(resolve_dha(State), {'TR', 'P-ABORT', indication, TrParms});
 		{'u-abortCause', Cause} ->
 			UserData = #'TR-user-data'{dialoguePortion = Cause},
 			TrParms = #'TR-U-ABORT'{qos = QOS,
 					transactionID = State#state.localTID,
 					userData = UserData},
-			gen_fsm:send_event(State#state.dha, {'TR', 'U-ABORT', indication, TrParms})
+			gen_fsm:send_event(resolve_dha(State), {'TR', 'U-ABORT', indication, TrParms})
 	end,
 	{stop, normal, State};
 
 %% Local Abort 
 initiation_sent({'local-abort', received, Cause}, State) ->
 	TrParms = #'TR-P-ABORT'{pAbort = Cause},
-	gen_fsm:send_event(State#state.dha, {'TR', 'P-ABORT', indication, TrParms}),
+	gen_fsm:send_event(resolve_dha(State), {'TR', 'P-ABORT', indication, TrParms}),
 	{stop, normal, State};
 
 %% End from TR-User
@@ -306,7 +301,7 @@ active({'CONTINUE', received, SccpParms}, State)
 	TrParms = #'TR-CONTINUE'{qos = QOS,
 			transactionID = State#state.localTID,
 			userData = UserData},
-	gen_fsm:send_event(State#state.dha, {'TR', 'CONTINUE', indication, TrParms}),
+	gen_fsm:send_event(resolve_dha(State), {'TR', 'CONTINUE', indication, TrParms}),
 	{next_state, active, State};
 
 %% Continue from TR-User
@@ -339,7 +334,7 @@ active({'END', received, SccpParms}, State)
 			transactionID = State#state.localTID,
 			userData = UserData},
 	%% TR-END indication CSL <- TSL
-	gen_fsm:send_event(State#state.dha, {'TR', 'END', indication, TrParms}),
+	gen_fsm:send_event(resolve_dha(State), {'TR', 'END', indication, TrParms}),
 	{stop, normal, State};
 
 %% End from TR-User (prearranged)
@@ -377,14 +372,14 @@ active({'ABORT', received, SccpParms}, State)
 					transactionID = State#state.localTID,
 					pAbort = Cause},
 			%% TR-P-ABORT indication CSL <- TSL
-			gen_fsm:send_event(State#state.dha, {'TR', 'P-ABORT', indication, TrParms});
+			gen_fsm:send_event(resolve_dha(State), {'TR', 'P-ABORT', indication, TrParms});
 		{'u-abortCause', Cause} ->  % Yes
 			UserData = #'TR-user-data'{dialoguePortion = Cause},
 			TrParms = #'TR-U-ABORT'{qos = QOS,
 					transactionID = State#state.localTID,
 					userData = UserData},
 			%% TR-U-ABORT indication CSL <- TSL
-			gen_fsm:send_event(State#state.dha, {'TR', 'U-ABORT', indication, TrParms})
+			gen_fsm:send_event(resolve_dha(State), {'TR', 'U-ABORT', indication, TrParms})
 	end,
 	{stop, normal, State};
 
@@ -393,7 +388,7 @@ active({'local-abort', received, Cause}, State) ->
 	TrParms = #'TR-P-ABORT'{qos = {false, false},
 			transactionID = State#state.localTID, pAbort= Cause},
 	%% TR-P-ABORT indication CSL <- TSL
-	gen_fsm:send_event(State#state.dha, {'TR', 'P-ABORT', indication, TrParms}),
+	gen_fsm:send_event(resolve_dha(State), {'TR', 'P-ABORT', indication, TrParms}),
 	{stop, normal, State};
 
 %% Abort from TR-User
@@ -431,6 +426,7 @@ handle_info(Info, StateName, State) ->
 
 %% handle a shutdown request
 terminate(_Reason, _StateName, State) ->
+	io:format("Deleting {~p, ~p} from tcap_transactions~n", [ State#state.localTID, self()]),
 	ets:delete(tcap_transaction, State#state.localTID),
 	%% signal TCO that we are stopping
 	gen_server:cast(State#state.tco, {'tsm-stopped', State#state.supref}).
@@ -449,3 +445,9 @@ process_undefined(U = #'TR-user-data'{dialoguePortion = undefined}) ->
 	U#'TR-user-data'{dialoguePortion = asn1_NOVALUE};
 process_undefined(U = #'TR-user-data'{}) ->
 	U.
+
+resolve_dha(DlgId) when is_integer(DlgId) ->
+	[{DlgId, DHA}] = ets:lookup(tcap_dha, DlgId),
+	DHA;
+resolve_dha(#state{localTID = TID}) ->
+	resolve_dha(TID).
