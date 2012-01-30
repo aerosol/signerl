@@ -346,7 +346,7 @@ process_rx_component(ISMs, C={invoke, #'Invoke'{invokeId=InvId}}) ->
 	end,
 	Prim = asn_rec_to_uprim(C),
 	ISM = lists:keyfind(InvId, 1, ISMs),
-	gem_fsm:send_event(ISM, Prim);
+	gen_fsm:send_event(ISM, Prim);
 process_rx_component(ISMs, C={reject, #'Reject'{invokeId=InvId,
 						problem=Problem}}) ->
 	ISM = lists:keyfind(InvId, 1, ISMs),
@@ -360,14 +360,14 @@ process_rx_component(ISMs, C={reject, #'Reject'{invokeId=InvId,
 	% FIXME: decide on TC-U-REJECT or TC-R-REJECT
 	Prim = asn_rec_to_uprim(C),
 	ISM = lists:keyfind(InvId, 1, ISMs),
-	gem_fsm:send_event(ISM, Prim);
+	gen_fsm:send_event(ISM, Prim);
 process_rx_component(ISMs, Comp) ->
 	% syntax error?
 	InvId = get_invoke_id_from_comp(Comp),
 	ISM = lists:keyfind(InvId, 1, ISMs),
 	% FIXME: ISM active (No -> 6)
 	Prim = asn_rec_to_uprim(Comp),
-	gem_fsm:send_event(ISM, Prim).
+	gen_fsm:send_event(ISM, Prim).
 
 add_components_to_state(State = #state{components=CompOld}, CompNew) when is_list(CompNew) ->
 	State#state{components = CompOld ++ CompNew};
