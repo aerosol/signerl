@@ -214,7 +214,7 @@ handle_call(dialogueID, From, State) ->
 % shutdown the server
 handle_call(stop, _From, State) ->
 	{stop, shutdown, ok, State};
-handle_call({local_new_trans, OTID}, Usap, State) ->
+handle_call({local_new_trans, OTID}, {Usap, Ref}, State) ->
 	% Create a Transaction State Machine (TSM)
 	ChildName = list_to_atom("tcap_trans_sup_" ++ integer_to_list(OTID)),
 	StartFunc = get_start(out_transaction, [OTID, Usap] , State),
