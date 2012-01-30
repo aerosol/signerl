@@ -268,7 +268,9 @@ handle_call(Request, From, State) ->
 % reference: Figure A.3/Q.774 (sheet 1 of 4)
 handle_cast({'N', 'UNITDATA', indication, UdataParams}, State) 
 		when is_record(UdataParams, 'N-UNITDATA') ->
-	case 'TR':decode('TCMessage', UdataParams#'N-UNITDATA'.userData) of
+	DecRes = 'TR':decode('TCMessage', UdataParams#'N-UNITDATA'.userData),
+	io:format("Decoded TCMessage: ~p~n", [DecRes]),
+	case DecRes of
 		{ok, {unidirectional, TPDU}} ->
 			case 'TR':decode('Unidirectional', TPDU) of
 				{ok, Unidirectional} ->
@@ -342,29 +344,27 @@ handle_cast({'N', 'UNITDATA', indication, UdataParams}, State)
 									{called, UdataParams#'N-UNITDATA'.calledAddress}]),
 					{noreply, State}
 			end;
-		{ok, {continue, TPDU}} ->
-			case 'TR':decode('Continue', TPDU) of
-				{ok, Continue} ->
-					% DTID assigned?
-					case catch ets:lookup_element(tcap_transaction, TPDU#'Continue'.dtid, 2) of
-						{error, _Reason}  ->
-							error_logger:error_report(["DTID not found in received N-CONTINUE",
-									{dtid, TPDU#'End'.dtid}, 
-									{caller, UdataParams#'N-UNITDATA'.callingAddress},
-									{called, UdataParams#'N-UNITDATA'.calledAddress}]),
+		{ok, {continue, TPDU = #'Continue'{dtid = Dtid}}} ->
+			% DTID assigned?
+			case catch ets:lookup_element(tcap_transaction, binary:decode_unsigned(Dtid), 2) of
+				{error, _Reason}  ->
+					error_logger:error_report(["DTID not found in received N-CONTINUE",
+								{dtid, Dtid},
+								{caller, UdataParams#'N-UNITDATA'.callingAddress},
+								{called, UdataParams#'N-UNITDATA'.calledAddress}]),
 % TODO
-							% Build ABORT message with appropriate P-Abort Cause values
-							% N-UNITDATA request TSL -> SCCP
-							% Discard received message
-							% reference: Figure A.3/Q/774 (sheet 4 of 4) label (4)
-							{noreply, State};
-						TSM ->
-							TsmParams = UdataParams#'N-UNITDATA'{userData = Continue},
-							% CONTINUE received TSM <- TCO
-							gen_fsm:send_event(TSM, {'CONTINUE', received, TsmParams}),
-							{noreply, State}
-					end;
-				{error, Reason} ->
+					% Build ABORT message with appropriate P-Abort Cause values
+					% N-UNITDATA request TSL -> SCCP
+					% Discard received message
+					% reference: Figure A.3/Q/774 (sheet 4 of 4) label (4)
+					{noreply, State};
+				TSM ->
+					TsmParams = UdataParams#'N-UNITDATA'{userData = TPDU},
+					% CONTINUE received TSM <- TCO
+					gen_fsm:send_event(TSM, {'CONTINUE', received, TsmParams}),
+					{noreply, State}
+			end;
+%				{error, Reason} ->
 % TODO
 					% OTID derivable?
 					% DTID assigned?
@@ -373,41 +373,39 @@ handle_cast({'N', 'UNITDATA', indication, UdataParams}, State)
 					% Local Abort TSM <- TCO
 					% Discard received message
 					% reference: Figure A.3/Q/774 (sheet 4 of 4) label (2)
-					error_logger:error_report(["Syntax error in received N-CONTINUE", {error, Reason},
-							{caller, UdataParams#'N-UNITDATA'.callingAddress},
-							{called, UdataParams#'N-UNITDATA'.calledAddress}]),
-					{noreply, State}
-			end;
-		{ok, {'end', TPDU}} ->
-			case 'TR':decode('End', TPDU) of
-				{ok, End} ->
-					% DTID assigned?
-					case catch ets:lookup(tcap_transaction, TPDU#'End'.dtid, 2) of
-						{error, _Reason}  ->
-							error_logger:error_report(["DTID not found in received N-END",
-									{dtid, TPDU#'End'.dtid},
-									{caller, UdataParams#'N-UNITDATA'.callingAddress},
-									{called, UdataParams#'N-UNITDATA'.calledAddress}]),
-							% Discard received message
-							% reference: Figure A.3/Q/774 (sheet 4 of 4) label (3)
-							{noreply, State};
-						TSM ->
-							TsmParams = UdataParams#'N-UNITDATA'{userData = End},
-							% END received TSM <- TCO
-							gen_fsm:send_event(TSM, {'END', received, TsmParams}),
-							{noreply, State}
-					end;
-				{error, Reason} ->
-% TODO
-					% DTID assigned?
-					%    Local Abort TSM <- TCO
+%					error_logger:error_report(["Syntax error in received N-CONTINUE", {error, Reason},
+%							{caller, UdataParams#'N-UNITDATA'.callingAddress},
+%							{called, UdataParams#'N-UNITDATA'.calledAddress}]),
+%					{noreply, State}
+%			end;
+		{ok, {'end', TPDU = #'End'{dtid = Dtid}}} ->
+			% DTID assigned?
+			case catch ets:lookup(tcap_transaction, binary:decode_unsigned(Dtid), 2) of
+				{error, _Reason}  ->
+					error_logger:error_report(["DTID not found in received N-END",
+								{dtid, Dtid},
+								{caller, UdataParams#'N-UNITDATA'.callingAddress},
+								{called, UdataParams#'N-UNITDATA'.calledAddress}]),
 					% Discard received message
-					% reference: Figure A.3/Q/774 (sheet 4 of 4) label (5)
-					error_logger:error_report(["Syntax error in received N-END", {error, Reason},
-							{caller, UdataParams#'N-UNITDATA'.callingAddress},
-							{called, UdataParams#'N-UNITDATA'.calledAddress}]),
+					% reference: Figure A.3/Q/774 (sheet 4 of 4) label (3)
+					{noreply, State};
+				TSM ->
+					TsmParams = UdataParams#'N-UNITDATA'{userData = TPDU},
+					% END received TSM <- TCO
+					gen_fsm:send_event(TSM, {'END', received, TsmParams}),
 					{noreply, State}
 			end;
+%				{error, Reason} ->
+% TODO
+%					% DTID assigned?
+%					%    Local Abort TSM <- TCO
+%					% Discard received message
+%					% reference: Figure A.3/Q/774 (sheet 4 of 4) label (5)
+%					error_logger:error_report(["Syntax error in received N-END", {error, Reason},
+%							{caller, UdataParams#'N-UNITDATA'.callingAddress},
+%							{called, UdataParams#'N-UNITDATA'.calledAddress}]),
+%					{noreply, State}
+%			end;
 		{ok, {abort, TPDU}} ->
 			case 'TR':decode('Abort', TPDU) of
 				{ok, Abort} ->
