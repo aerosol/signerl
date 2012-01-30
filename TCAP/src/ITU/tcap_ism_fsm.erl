@@ -145,12 +145,12 @@ op_sent_cl1(P=#'TC-RESULT-NL'{}, State) ->
 op_sent_cl1('terminate', State) ->
 	% stop invocation timer
 	timer:cancel(State#state.inv_timer),
-	{stop, terminate_req, State}.
+	{stop, normal, State}.
 
 wait_for_reject('terminate', State) ->
 	% stop reject timer
 	timer:cancel(State#state.rej_timer),
-	{stop, terminate_req, State};
+	{stop, normal, State};
 wait_for_reject({timer_expired, reject}, State) ->
 	% reject timer expiry
 	% terminate
@@ -178,7 +178,7 @@ op_sent_cl2(Op, State) when
 	{stop, class2_result, State};
 op_sent_cl2('terminate', State) ->
 	% terminate
-	{stop, terminate_req, State}.
+	{stop, normal, State}.
 
 op_sent_cl3(P=#'TC-RESULT-L'{}, State) ->
 	% Figure A.7/Q.774 (5 of 6)
@@ -197,11 +197,11 @@ op_sent_cl3('terminate', State) ->
 	% stop invocation timter
 	timer:cancel(State#state.inv_timer),
 	% terminate
-	{stop, terminate_req, State}.
+	{stop, normal, State}.
 
 op_sent_cl4('terminate', State) ->
 	% terminate
-	{stop, terminate_req, State};
+	{stop, normal, State};
 op_sent_cl4(Op, State) ->
 	% Figure A.7/Q.774 (6 of 6)
 	% generate REJ component to CCO
