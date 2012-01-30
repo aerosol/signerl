@@ -309,6 +309,8 @@ handle_cast({'N', 'UNITDATA', indication, UdataParams}, State)
 					%        or that there are enough resources available.  The real
 					%        test is in whether the start succeeds.
 					case supervisor:start_child(State#state.supervisor, ChildSpec) of
+					% FIXME: the entire mobile-termianted
+					% transaction handling needs to reflect tcap_transaction_sup
 						{ok, TSM} ->
 							% Created a Transaction State Machine (TSM)
 							TsmParams = UdataParams#'N-UNITDATA'{userData = Begin},
@@ -346,7 +348,7 @@ handle_cast({'N', 'UNITDATA', indication, UdataParams}, State)
 			end;
 		{ok, {continue, TPDU = #'Continue'{dtid = Dtid}}} ->
 			% DTID assigned?
-			case catch ets:lookup_element(tcap_transaction, binary:decode_unsigned(Dtid), 2) of
+			case ets:lookup_element(tcap_transaction, decode_tid(Dtid), 2) of
 				{error, _Reason}  ->
 					error_logger:error_report(["DTID not found in received N-CONTINUE",
 								{dtid, Dtid},
@@ -380,7 +382,7 @@ handle_cast({'N', 'UNITDATA', indication, UdataParams}, State)
 %			end;
 		{ok, {'end', TPDU = #'End'{dtid = Dtid}}} ->
 			% DTID assigned?
-			case catch ets:lookup(tcap_transaction, binary:decode_unsigned(Dtid), 2) of
+			case catch ets:lookup(tcap_transaction, decode_tid(Dtid), 2) of
 				{error, _Reason}  ->
 					error_logger:error_report(["DTID not found in received N-END",
 								{dtid, Dtid},
@@ -731,3 +733,9 @@ enter_loop(Module, Options, State, Timeout) ->
 % enter_loop(Module, Options, State, ServerName) ->
 %	gen_server:enter_loop(Module, Options, State, ServerName).
 
+
+% convert a TID from the four-octet binary/list form (OCTET STRING) to unsigned int
+decode_tid(Bin) when is_binary(Bin) ->
+	binary:decode_unsigned(Bin);
+decode_tid(List) when is_list(List) ->
+	decode_tid(list_to_binary(List)).
