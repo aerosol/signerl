@@ -158,7 +158,7 @@ idle({'TR', 'UNI', indication, UniParms}, State) when is_record(UniParms, 'TR-UN
 			if
 				is_record(UniParms#'TR-UNI'.userData, 'TR-user-data'),
 						(UniParms#'TR-UNI'.userData)#'TR-user-data'.componentPortion /= undefined ->
-					case 'TR':decode('ComponentPortion', (UniParms#'TR-UNI'.userData)#'TR-user-data'.componentPortion) of
+					case 'TC':decode('Components', (UniParms#'TR-UNI'.userData)#'TR-user-data'.componentPortion) of
 						[] = Components -> ComponentsPresent = false;
 						Components -> ComponentsPresent = true
 					end;
@@ -228,7 +228,7 @@ idle({'TR', 'BEGIN', indication, BeginParms}, State) when is_record(BeginParms, 
 			if
 				is_record(BeginParms#'TR-BEGIN'.userData, 'TR-user-data'),
 						(BeginParms#'TR-BEGIN'.userData)#'TR-user-data'.componentPortion /= undefined ->
-					case 'TR':decode('ComponentPortion', (BeginParms#'TR-BEGIN'.userData)#'TR-user-data'.componentPortion) of
+					case 'TC':decode('Components', (BeginParms#'TR-BEGIN'.userData)#'TR-user-data'.componentPortion) of
 						[] = Components -> ComponentsPresent = false;
 						Components -> ComponentsPresent = true
 					end;
@@ -400,7 +400,7 @@ initiation_sent({'TR', 'END', indication, EndParms}, State) when is_record(EndPa
 	if
 		is_record(EndParms#'TR-END'.userData, 'TR-user-data'),
 				(EndParms#'TR-END'.userData)#'TR-user-data'.componentPortion /= undefined ->
-			case 'TR':decode('ComponentPortion', (EndParms#'TR-END'.userData)#'TR-user-data'.componentPortion) of
+			case 'TC':decode('Components', (EndParms#'TR-END'.userData)#'TR-user-data'.componentPortion) of
 				[] = Components -> ComponentsPresent = false;
 				Components -> ComponentsPresent = true
 			end;
@@ -467,9 +467,9 @@ initiation_sent({'TR', 'CONTINUE', indication, ContParms}, State) when is_record
 	if
 		is_record(ContParms#'TR-CONTINUE'.userData, 'TR-user-data'),
 				(ContParms#'TR-CONTINUE'.userData)#'TR-user-data'.componentPortion /= undefined ->
-			case 'TR':decode('ComponentPortion', (ContParms#'TR-END'.userData)#'TR-user-data'.componentPortion) of
-				[] = Components -> ComponentsPresent = false;
-				Components -> ComponentsPresent = true
+			case 'TC':decode('Components', (ContParms#'TR-CONTINUE'.userData)#'TR-user-data'.componentPortion) of
+				{ok, [] = Components} -> ComponentsPresent = false;
+				{ok, Components} -> ComponentsPresent = true
 			end;
 		true ->
 			Components = undefined,
@@ -479,6 +479,8 @@ initiation_sent({'TR', 'CONTINUE', indication, ContParms}, State) when is_record
 	%% AC Mode set?
 	%% Extract dialogue portion
 	%% Dialogue portion correct?
+	io:format("Components: ~p\n", [Components]),
+	io:format("Dialogue: ~p\n", [(ContParms#'TR-CONTINUE'.userData)#'TR-user-data'.dialoguePortion]),
 	case extract_dialogue_portion(ContParms#'TR-CONTINUE'.userData, State#state.appContextMode) of
 		abort ->
 			%% Discard components
@@ -795,8 +797,9 @@ extract_dialogue_portion(UserData, _AppContextName) when not is_record(UserData,
 extract_dialogue_portion(UserData, _AppContextName) when is_record(UserData, 'TR-user-data'),
 		UserData#'TR-user-data'.dialoguePortion /= undefined ->
 	%% Extract dialogue portion
-	case 'DialoguePDUs':decode('DialoguePDU', UserData#'TR-user-data'.dialoguePortion) of
-		{dialoguePDU, AARE} when is_record(AARE, 'AARE-apdu') ->
+	{'EXTERNAL', {syntax,{0,0,17,773,1,1,1}}, _, DlgPDU} = UserData#'TR-user-data'.dialoguePortion,
+	case 'DialoguePDUs':decode('DialoguePDU', DlgPDU) of
+		{ok, {dialogueResponse, AARE}} when is_record(AARE, 'AARE-apdu') ->
 			AARE;	%% Dialogue portion correct? (yes)
 		_ ->
 			abort	%% Dialogue portion correct? (no)
