@@ -843,7 +843,9 @@ extract_dialogue_portion(UserData, _AppContextName) when not is_record(UserData,
 extract_dialogue_portion(UserData, _AppContextName) when is_record(UserData, 'TR-user-data'),
 		UserData#'TR-user-data'.dialoguePortion /= undefined ->
 	%% Extract dialogue portion
-	{'EXTERNAL', {syntax,{0,0,17,773,1,1,1}}, _, DlgPDU} = UserData#'TR-user-data'.dialoguePortion,
+	%{'EXTERNAL', {syntax,{0,0,17,773,1,1,1}}, _, DlgPDU} = UserData#'TR-user-data'.dialoguePortion,
+	% some implementations seem to be broken and not send the 'symtax' part?!?
+	{'EXTERNAL', _, _, DlgPDU} = UserData#'TR-user-data'.dialoguePortion,
 	case 'DialoguePDUs':decode('DialoguePDU', DlgPDU) of
 		{ok, {dialogueResponse, AARE}} when is_record(AARE, 'AARE-apdu') ->
 			AARE;	%% Dialogue portion correct? (yes)
