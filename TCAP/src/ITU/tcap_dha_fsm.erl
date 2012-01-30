@@ -652,7 +652,7 @@ wait_for_uni_components('no-component', State) ->
 	wait_for_uni_components1(State);
 wait_for_uni_components({'requested-components', Components}, State) ->
 	%% Assemble component portion
-	{ok, ComponentPortion} = 'TR':encode('ComponentPortion', Components),
+	{ok, ComponentPortion} = 'TC':encode('Components', Components),
 	%% Assemble TSL user data
 	UserData = (State#state.parms)#'TR-UNI'.userData,
 	NewUserData = UserData#'TR-user-data'{componentPortion = ComponentPortion},
@@ -672,7 +672,7 @@ wait_for_begin_components('no-component', State) ->
 	wait_for_begin_components1(State);
 wait_for_begin_components({'requested-components', Components}, State) ->
 	%% Assemble component portion
-	{ok, ComponentPortion} = 'TR':encode('ComponentPortion', Components),
+	{ok, ComponentPortion} = 'TC':encode('Components', Components),
 	%% Assemble TSL user data
 	UserData = (State#state.parms)#'TR-BEGIN'.userData,
 	NewUserData = UserData#'TR-user-data'{componentPortion = ComponentPortion},
@@ -691,7 +691,7 @@ wait_cont_components_ir('no-component', State) ->
 	wait_cont_components_ir1(State);
 wait_cont_components_ir({'requested-components', Components}, State) ->
 	%% Assemble component portion
-	{ok, ComponentPortion} = 'TR':encode('ComponentPortion', Components),
+	{ok, ComponentPortion} = 'TC':encode('Components', Components),
 	%% Assemble TSL user data
 	UserData = (State#state.parms)#'TR-CONTINUE'.userData,
 	NewUserData = UserData#'TR-user-data'{componentPortion = ComponentPortion},
@@ -708,7 +708,7 @@ wait_cont_components_active('no-component', State) ->
 	wait_cont_components_active1(State);
 wait_cont_components_active({'requested-components', Components}, State) ->
 	%% Assemble component portion
-	{ok, ComponentPortion} = 'TR':encode('ComponentPortion', Components),
+	{ok, ComponentPortion} = 'TC':encode('Components', Components),
 	%% Assemble TSL user data
 	UserData = (State#state.parms)#'TR-CONTINUE'.userData,
 	NewUserData = UserData#'TR-user-data'{componentPortion = ComponentPortion},
@@ -726,7 +726,7 @@ wait_for_end_components('no-component', State) ->
 	wait_for_end_components1(State);
 wait_for_end_components({'requested-components', Components}, State) ->
 	%% Assemble component portion
-	{ok, ComponentPortion} = 'TR':encode('ComponentPortion', Components),
+	{ok, ComponentPortion} = 'TC':encode('Components', Components),
 	%% Assemble TSL user data
 	UserData = (State#state.parms)#'TR-END'.userData,
 	NewUserData = UserData#'TR-user-data'{componentPortion = ComponentPortion},
