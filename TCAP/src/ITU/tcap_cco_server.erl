@@ -345,7 +345,7 @@ process_rx_component(ISMs, C={invoke, #'Invoke'{invokeId=InvId}}) ->
 		ok
 	end,
 	Prim = asn_rec_to_uprim(C),
-	ISM = lists:keyfind(InvId, 1, ISMs),
+	{InvId, ISM} = lists:keyfind(InvId, 1, ISMs),
 	gen_fsm:send_event(ISM, Prim);
 process_rx_component(ISMs, C={reject, #'Reject'{invokeId=InvId,
 						problem=Problem}}) ->
@@ -359,12 +359,12 @@ process_rx_component(ISMs, C={reject, #'Reject'{invokeId=InvId,
 	end,
 	% FIXME: decide on TC-U-REJECT or TC-R-REJECT
 	Prim = asn_rec_to_uprim(C),
-	ISM = lists:keyfind(InvId, 1, ISMs),
+	{InvId, ISM} = lists:keyfind(InvId, 1, ISMs),
 	gen_fsm:send_event(ISM, Prim);
 process_rx_component(ISMs, Comp) ->
 	% syntax error?
 	InvId = get_invoke_id_from_comp(Comp),
-	ISM = lists:keyfind(InvId, 1, ISMs),
+	{InvId, ISM} = lists:keyfind(InvId, 1, ISMs),
 	% FIXME: ISM active (No -> 6)
 	Prim = asn_rec_to_uprim(Comp),
 	gen_fsm:send_event(ISM, Prim).
