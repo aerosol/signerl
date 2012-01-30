@@ -222,7 +222,7 @@ initiation_received({'ABORT', transaction, AbortParms}, State)
 initiation_sent({'CONTINUE', received, SccpParms}, State)
 		when is_record(SccpParms, 'N-UNITDATA') ->
 	%% Store remote address and remote TID
-	OTID = (SccpParms#'N-UNITDATA'.userData)#'Begin'.otid,
+	OTID = (SccpParms#'N-UNITDATA'.userData)#'Continue'.otid,
 	NewState = State#state{ remote_address
 			= SccpParms#'N-UNITDATA'.callingAddress, remoteTID = OTID},
 	QOS = {SccpParms#'N-UNITDATA'.sequenceControl,
