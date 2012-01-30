@@ -92,7 +92,7 @@ handle_cast({'TC','INVOKE',request, InvParam}, State)
 			when is_record(InvParam, 'TC-INVOKE') ->
 	% assemble INVOKE component
 	AsnRosRec = uprim_to_asn_rec(InvParam),
-	Component = #component{user_prim = InvParam, asn_ber = 0}, % FIXME
+	Component = #component{user_prim = InvParam, asn_ber = AsnRosRec},
 	% mark it as available
 	NewState = add_components_to_state(State, Component),
 	% what to do with class and timeout?
@@ -133,7 +133,7 @@ handle_cast({'TC', Req, request, Param}, State) when
 	% Figure A.6/Q.774 (1 of 4)
 	% assemble requested component
 	AsnRosRec = uprim_to_asn_rec(Param),
-	Component = #component{user_prim = Param, asn_ber = 0}, %FIXME
+	Component = #component{user_prim = Param, asn_ber = AsnRosRec}, %FIXME
 	% mark component available for this dialogue
 	NewState = add_components_to_state(State, Component),
 	{noreply, NewState};
@@ -143,7 +143,7 @@ handle_cast({'TC','U-REJECT',request, Param}, State)
 			when is_record(Param, 'TC-U-REJECT') ->
 	% assemble reject component
 	AsnRosRec = uprim_to_asn_rec(Param),
-	Component = #component{user_prim = Param, asn_ber = 0}, %FIXME
+	Component = #component{user_prim = Param, asn_ber = AsnRosRec}, %FIXME
 	% FIXME: if probelm type Result/Error, terminate ISM
 	% mark component available for this dialogue
 	NewState = add_components_to_state(State, Component),
@@ -273,29 +273,29 @@ terminate_active_ISM(ISMs, InvId) ->
 
 % Convert from user-visible primitive records to asn1ct-generated record
 uprim_to_asn_rec(Uprim) when is_record(Uprim, 'TC-INVOKE') ->
-	#'Invoke'{invokeId = asn_val(Uprim#'TC-INVOKE'.invokeID),
+	{invoke, #'Invoke'{invokeId = asn_val(Uprim#'TC-INVOKE'.invokeID),
 		  linkedId = asn_val(Uprim#'TC-INVOKE'.linkedID),
 		  opcode = asn_val(Uprim#'TC-INVOKE'.operation),
-		  argument = asn_val(Uprim#'TC-INVOKE'.parameters)};
+		  argument = asn_val(Uprim#'TC-INVOKE'.parameters)}};
 uprim_to_asn_rec(#'TC-RESULT-NL'{invokeID = InvId, operation = Op,
 				 parameters = Params}) ->
 	ResRes = #'ReturnResult_result'{opcode = asn_val(Op),
 					result = asn_val(Params)},
-	#'ReturnResult'{invokeId = asn_val(InvId), result = ResRes};
+	{returnResultNotLast, #'ReturnResult'{invokeId = asn_val(InvId), result = ResRes}};
 uprim_to_asn_rec(#'TC-RESULT-L'{invokeID = InvId, operation = Op,
 				parameters = Params}) ->
 	ResRes = #'ReturnResult_result'{opcode = asn_val(Op),
 					result = asn_val(Params)},
-	#'ReturnResult'{invokeId = asn_val(InvId), result = ResRes};
+	{returnResult, #'ReturnResult'{invokeId = asn_val(InvId), result = ResRes}};
 uprim_to_asn_rec(#'TC-U-ERROR'{invokeID = InvId, error = Error,
 			       parameters = Params}) ->
-	#'ReturnError'{invokeId = asn_val(InvId),
+	{returnError, #'ReturnError'{invokeId = asn_val(InvId),
 			errcode = asn_val(Error),
-			parameter = asn_val(Params)};
+			parameter = asn_val(Params)}};
 uprim_to_asn_rec(#'TC-R-REJECT'{invokeID = InvId, problemCode = Pcode}) ->
-	#'Reject'{invokeId = InvId, problem = Pcode};
+	{reject, #'Reject'{invokeId = InvId, problem = Pcode}};
 uprim_to_asn_rec(#'TC-U-REJECT'{invokeID = InvId, problemCode = Pcode}) ->
-	#'Reject'{invokeId = InvId, problem = Pcode}.
+	{reject, #'Reject'{invokeId = InvId, problem = Pcode}}.
 
 % Convert from asn1ct-generated record to the primitive records
 asn_rec_to_uprim({invoke, AsnRec}) when is_record(AsnRec, 'Invoke') ->
