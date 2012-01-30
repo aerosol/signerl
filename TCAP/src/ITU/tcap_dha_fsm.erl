@@ -646,7 +646,40 @@ active({'TC', 'END', request, EndParms}, State) when is_record(EndParms, 'TC-END
 			gen_server:cast(State#state.cco, 'request-components'),
 			%% Process components
 			{next_state, wait_for_end_components, State}
-	end.
+	end;
+
+%% reference: Figuer A.5/Q774 (sheet 10 of 11)
+%% TR-END indication from TSL
+active({'TR', 'END', indication, EndParms}, State) when is_record(EndParms, 'TR-END') ->
+	UserData = EndParms#'TR-END'.userData,
+	if
+		UserData#'TR-user-data'.dialoguePortion /= asn1_NOVALUE ->
+			% discard components
+			% TC-P-ABORT.ind to TCU
+			Components = undefined,
+			ComponentsPresent = false;
+		UserData#'TR-user-data'.componentPortion /= asn1_NOVALUE ->
+			case 'TC':decode('Components', UserData#'TR-user-data'.componentPortion) of
+				[] = Components -> ComponentsPresent = false;
+				Components -> ComponentsPresent = true
+			end;
+		true ->
+			Components = undefined,
+			ComponentsPresent = false
+	end,
+	case ComponentsPresent of
+		true ->
+			%% Components to CHA
+			gen_server:cast(State#state.cco, {components, Components});
+		false ->
+			ok
+	end,
+	%% Dialogue terminated to CHA
+	gen_server:cast(State#state.cco, 'dialogue-terminated'),
+	%% Free dialogue ID
+	{stop, normal, State}.
+
+
 
 %% reference: Figure A.5 bis/Q.774
 %% reference: Figure A.5/Q.774 (sheet 2 of 11)
