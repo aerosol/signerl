@@ -512,7 +512,7 @@ initiation_sent({'TR', 'CONTINUE', indication, ContParms}, State) when is_record
       			userInfo = AARE,
 					componentsPresent = ComponentsPresent},
 			NewState = State#state{parms = TcParms},
-			gen_fsm:send_event(NewState#state.usap, {'TC', 'END', indication, TcParms}),
+			gen_fsm:send_event(NewState#state.usap, {'TC', 'CONTINUE', indication, TcParms}),
 			%% Any components?
 			case ComponentsPresent of
 				true ->
