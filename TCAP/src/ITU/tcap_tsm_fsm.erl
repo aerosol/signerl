@@ -293,14 +293,15 @@ initiation_sent({'ABORT', transaction, AbortParms}, State)
 %% Continue received from remote
 active({'CONTINUE', received, SccpParms}, State)
 		when is_record(SccpParms, 'N-UNITDATA') ->
+	Continue = SccpParms#'N-UNITDATA'.userData,
 	QOS = {SccpParms#'N-UNITDATA'.sequenceControl,
 			SccpParms#'N-UNITDATA'.returnOption},
-	{ok, Continue} = 'TR':decode('TCMessage', SccpParms#'N-UNITDATA'.userData),
 	UserData = #'TR-user-data'{dialoguePortion = Continue#'Continue'.dialoguePortion,
 			componentPortion = Continue#'Continue'.components},
 	TrParms = #'TR-CONTINUE'{qos = QOS,
 			transactionID = State#state.localTID,
 			userData = UserData},
+	%% TR-CONTINUE indication CSL <- TSL
 	gen_fsm:send_event(resolve_dha(State), {'TR', 'CONTINUE', indication, TrParms}),
 	{next_state, active, State};
 
@@ -327,7 +328,7 @@ active({'END', received, SccpParms}, State)
 		when is_record(SccpParms, 'N-UNITDATA') ->
 	QOS = {SccpParms#'N-UNITDATA'.sequenceControl,
 			SccpParms#'N-UNITDATA'.returnOption},
-	{ok, End} = 'TR':decode('TCMessage', SccpParms#'N-UNITDATA'.userData),
+	End = SccpParms#'N-UNITDATA'.userData,
 	UserData = #'TR-user-data'{dialoguePortion = End#'End'.dialoguePortion,
 			componentPortion = End#'End'.components},
 	TrParms = #'TR-END'{qos = QOS,
@@ -364,7 +365,7 @@ active({'ABORT', received, SccpParms}, State)
 		when is_record(SccpParms, 'N-UNITDATA') ->
 	QOS = {SccpParms#'N-UNITDATA'.sequenceControl,
 			SccpParms#'N-UNITDATA'.returnOption},
-	{ok, Abort} = 'TR':decode('TCMessage', SccpParms#'N-UNITDATA'.userData),
+	Abort = SccpParms#'N-UNITDATA'.userData,
 	%% TR-U-ABORT?
 	case Abort#'Abort'.reason of
 		{'p-abortCause', Cause} ->  % No
