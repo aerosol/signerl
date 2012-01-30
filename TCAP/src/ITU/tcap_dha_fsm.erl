@@ -1,10 +1,11 @@
 %%% $Id: tcap_dha_fsm.erl,v 1.3 2005/08/04 09:33:17 vances Exp $
 %%%---------------------------------------------------------------------
-%%% @copyright 2004-2005 Motivity Telecom
-%%% @author Vance Shipley <vances@motivity.ca> [http://www.motivity.ca]
+%%% @copyright 2004-2005 Motivity Telecom, 2010-2012 Harald Welte
+%%% @author Vance Shipley <vances@motivity.ca>, Harald Welte <laforge@gnumonks.org>
 %%% @end
 %%%
 %%% Copyright (c) 2004-2005, Motivity Telecom
+%%% Copyright (c) 2010-2012, Harald Welte <laforge@gnumonks.org>
 %%% 
 %%% All rights reserved.
 %%% 
@@ -157,7 +158,7 @@ idle({'TR', 'UNI', indication, UniParms}, State) when is_record(UniParms, 'TR-UN
 		TcParms when is_record(TcParms, 'TC-UNI') ->
 			if
 				is_record(UniParms#'TR-UNI'.userData, 'TR-user-data'),
-						(UniParms#'TR-UNI'.userData)#'TR-user-data'.componentPortion /= undefined ->
+						(UniParms#'TR-UNI'.userData)#'TR-user-data'.componentPortion /= asn1_NOVALUE ->
 					case 'TC':decode('Components', (UniParms#'TR-UNI'.userData)#'TR-user-data'.componentPortion) of
 						[] = Components -> ComponentsPresent = false;
 						Components -> ComponentsPresent = true
@@ -227,7 +228,7 @@ idle({'TR', 'BEGIN', indication, BeginParms}, State) when is_record(BeginParms, 
 		TcParms when is_record(TcParms, 'TC-BEGIN') ->
 			if
 				is_record(BeginParms#'TR-BEGIN'.userData, 'TR-user-data'),
-						(BeginParms#'TR-BEGIN'.userData)#'TR-user-data'.componentPortion /= undefined ->
+						(BeginParms#'TR-BEGIN'.userData)#'TR-user-data'.componentPortion /= asn1_NOVALUE ->
 					case 'TC':decode('Components', (BeginParms#'TR-BEGIN'.userData)#'TR-user-data'.componentPortion) of
 						[] = Components -> ComponentsPresent = false;
 						Components -> ComponentsPresent = true
@@ -399,7 +400,7 @@ initiation_sent({'TC', 'U-ABORT', request, AbortParms}, State) when is_record(Ab
 initiation_sent({'TR', 'END', indication, EndParms}, State) when is_record(EndParms, 'TR-END') ->
 	if
 		is_record(EndParms#'TR-END'.userData, 'TR-user-data'),
-				(EndParms#'TR-END'.userData)#'TR-user-data'.componentPortion /= undefined ->
+				(EndParms#'TR-END'.userData)#'TR-user-data'.componentPortion /= asn1_NOVALUE ->
 			case 'TC':decode('Components', (EndParms#'TR-END'.userData)#'TR-user-data'.componentPortion) of
 				[] = Components -> ComponentsPresent = false;
 				Components -> ComponentsPresent = true
@@ -431,7 +432,7 @@ initiation_sent({'TR', 'END', indication, EndParms}, State) when is_record(EndPa
 					dialogueID = State#state.did,
 					appContextName = State#state.appContextMode,
 					componentsPresent = ComponentsPresent,
-      			userInfo = AARE,
+					userInfo = AARE,
 					termination = EndParms#'TR-END'.termination},
 			NewState = State#state{parms = TcParms},
 			gen_fsm:send_event(NewState#state.usap, {'TC', 'END', indication, TcParms}),
@@ -466,7 +467,7 @@ initiation_sent({'TR', 'NOTICE', indication, NoticeParms}, State) when is_record
 initiation_sent({'TR', 'CONTINUE', indication, ContParms}, State) when is_record(ContParms, 'TR-CONTINUE') ->
 	if
 		is_record(ContParms#'TR-CONTINUE'.userData, 'TR-user-data'),
-				(ContParms#'TR-CONTINUE'.userData)#'TR-user-data'.componentPortion /= undefined ->
+				(ContParms#'TR-CONTINUE'.userData)#'TR-user-data'.componentPortion /= asn1_NOVALUE ->
 			case 'TC':decode('Components', (ContParms#'TR-CONTINUE'.userData)#'TR-user-data'.componentPortion) of
 				{ok, [] = Components} -> ComponentsPresent = false;
 				{ok, Components} -> ComponentsPresent = true
@@ -656,23 +657,35 @@ active({'TR', 'END', indication, EndParms}, State) when is_record(EndParms, 'TR-
 		UserData#'TR-user-data'.dialoguePortion /= asn1_NOVALUE ->
 			% discard components
 			% TC-P-ABORT.ind to TCU
-			Components = undefined,
-			ComponentsPresent = false;
-		UserData#'TR-user-data'.componentPortion /= asn1_NOVALUE ->
-			case 'TC':decode('Components', UserData#'TR-user-data'.componentPortion) of
-				[] = Components -> ComponentsPresent = false;
-				Components -> ComponentsPresent = true
-			end;
+			ok;
 		true ->
-			Components = undefined,
-			ComponentsPresent = false
-	end,
-	case ComponentsPresent of
-		true ->
-			%% Components to CHA
-			gen_server:cast(State#state.cco, {components, Components});
-		false ->
-			ok
+			ComponentPortion = UserData#'TR-user-data'.componentPortion,
+			if
+				ComponentPortion /= asn1_NOVALUE ->
+					case 'TC':decode('Components', ComponentPortion) of
+						[] = Components -> ComponentsPresent = false;
+						Components -> ComponentsPresent = true
+					end;
+				true ->
+					Components = undefined,
+					ComponentsPresent = false
+			end,
+			%% TC-END indication to TCU
+			TcParms = #'TC-END'{qos = EndParms#'TR-END'.qos,
+					dialogueID = State#state.did,
+					appContextName = State#state.appContextMode,
+					componentsPresent = ComponentsPresent,
+					termination = EndParms#'TR-END'.termination},
+			NewState = State#state{parms = TcParms},
+
+			%% Components To CHA
+			gen_fsm:send_event(NewState#state.usap, {'TC', 'END', indication, TcParms}),
+			case ComponentsPresent of
+				true ->
+					gen_server:cast(State#state.cco, {components, Components});
+				_ ->
+					ok
+			end
 	end,
 	%% Dialogue terminated to CHA
 	gen_server:cast(State#state.cco, 'dialogue-terminated'),
