@@ -152,7 +152,7 @@ handle_cast({'TC','U-REJECT',request, Param}, State)
 % DHA -> CHA (CCO): Components received
 handle_cast({components, Components}, State) ->
 	% Figure A.6/Q.774 (2 of 4)
-	process_rx_components(State#state.ism, Components),
+	process_rx_components(State#state.ism, State#state.usap, Components),
 	{noreply, State};
 
 % ISM -> CCO: Generate REJ component
@@ -328,13 +328,13 @@ asn_rec_to_uprim({reject, AsnRec}) when is_record(AsnRec, 'Reject') ->
 			problemCode = AsnRec#'Reject'.problem}.
 
 
-process_rx_components(_ISMs, []) ->
+process_rx_components(_ISMs, _Usap, []) ->
 	ok;
-process_rx_components(ISMs, [Head|Tail]) ->
-	process_rx_component(ISMs, Head),
-	process_rx_components(ISMs, Tail).
+process_rx_components(ISMs, Usap, [Head|Tail]) ->
+	process_rx_component(ISMs, Usap, Head),
+	process_rx_components(ISMs, Usap, Tail).
 
-process_rx_component(ISMs, C={invoke, #'Invoke'{invokeId=InvId}}) ->
+process_rx_component(ISMs, Usap, C={invoke, #'Invoke'{invokeId=InvId}}) ->
 	{invoke, I} = C,
 	case I#'Invoke'.linkedId of
 	    asn1_NOVALUE ->
@@ -345,10 +345,9 @@ process_rx_component(ISMs, C={invoke, #'Invoke'{invokeId=InvId}}) ->
 		ok
 	end,
 	Prim = asn_rec_to_uprim(C),
-	{InvId, ISM} = lists:keyfind(InvId, 1, ISMs),
-	gen_fsm:send_event(ISM, Prim);
-process_rx_component(ISMs, C={reject, #'Reject'{invokeId=InvId,
-						problem=Problem}}) ->
+	gen_fsm:send_event(Usap, {'TC','INVOKE',indication,Prim});
+process_rx_component(ISMs, _Usap, C={reject, #'Reject'{invokeId=InvId,
+							problem=Problem}}) ->
 	ISM = lists:keyfind(InvId, 1, ISMs),
 	case Problem of
 	    {invoke, _} ->
@@ -361,7 +360,7 @@ process_rx_component(ISMs, C={reject, #'Reject'{invokeId=InvId,
 	Prim = asn_rec_to_uprim(C),
 	{InvId, ISM} = lists:keyfind(InvId, 1, ISMs),
 	gen_fsm:send_event(ISM, Prim);
-process_rx_component(ISMs, Comp) ->
+process_rx_component(ISMs, _Usap, Comp) ->
 	% syntax error?
 	InvId = get_invoke_id_from_comp(Comp),
 	{InvId, ISM} = lists:keyfind(InvId, 1, ISMs),
