@@ -220,6 +220,12 @@ asn_val(Foo) ->
 			Foo
 	end.
 
+% convert invoke ID from user-input format to what ASN1RT expects
+inv_id(undefined) ->
+	asn1_NOVALUE;
+inv_id(Int) when is_integer(Int) ->
+	{present, Int}.
+
 % Figure A.6/Q.774 (4 of 4)
 process_request_components(Components, State) when 
 			is_list(Components), is_record(State, state) ->
@@ -273,23 +279,23 @@ terminate_active_ISM(ISMs, InvId) ->
 
 % Convert from user-visible primitive records to asn1ct-generated record
 uprim_to_asn_rec(Uprim) when is_record(Uprim, 'TC-INVOKE') ->
-	{invoke, #'Invoke'{invokeId = asn_val(Uprim#'TC-INVOKE'.invokeID),
-		  linkedId = asn_val(Uprim#'TC-INVOKE'.linkedID),
+	{invoke, #'Invoke'{invokeId = inv_id(Uprim#'TC-INVOKE'.invokeID),
+		  linkedId = inv_id(Uprim#'TC-INVOKE'.linkedID),
 		  opcode = asn_val(Uprim#'TC-INVOKE'.operation),
 		  argument = asn_val(Uprim#'TC-INVOKE'.parameters)}};
 uprim_to_asn_rec(#'TC-RESULT-NL'{invokeID = InvId, operation = Op,
 				 parameters = Params}) ->
 	ResRes = #'ReturnResult_result'{opcode = asn_val(Op),
 					result = asn_val(Params)},
-	{returnResultNotLast, #'ReturnResult'{invokeId = asn_val(InvId), result = ResRes}};
+	{returnResultNotLast, #'ReturnResult'{invokeId = inv_id(InvId), result = ResRes}};
 uprim_to_asn_rec(#'TC-RESULT-L'{invokeID = InvId, operation = Op,
 				parameters = Params}) ->
 	ResRes = #'ReturnResult_result'{opcode = asn_val(Op),
 					result = asn_val(Params)},
-	{returnResult, #'ReturnResult'{invokeId = asn_val(InvId), result = ResRes}};
+	{returnResult, #'ReturnResult'{invokeId = inv_id(InvId), result = ResRes}};
 uprim_to_asn_rec(#'TC-U-ERROR'{invokeID = InvId, error = Error,
 			       parameters = Params}) ->
-	{returnError, #'ReturnError'{invokeId = asn_val(InvId),
+	{returnError, #'ReturnError'{invokeId = inv_id(InvId),
 			errcode = asn_val(Error),
 			parameter = asn_val(Params)}};
 uprim_to_asn_rec(#'TC-R-REJECT'{invokeID = InvId, problemCode = Pcode}) ->
