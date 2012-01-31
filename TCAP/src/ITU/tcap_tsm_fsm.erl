@@ -124,7 +124,7 @@ idle({'BEGIN', transaction, BeginParms}, State)
 	%% Assemble TR-portion of BEGIN message
 	io:format("Trying to encode ~p~n", [Begin]),
 	{ok, TPDU} = 'TR':encode('TCMessage', {'begin', Begin}),
-	{SequenceControl, ReturnOption} = BeginParms#'TR-BEGIN'.qos,
+	{SequenceControl, ReturnOption} = qos_from_tr_prim(BeginParms),
 	SccpParms = #'N-UNITDATA'{calledAddress = BeginParms#'TR-BEGIN'.destAddress,
 			callingAddress = BeginParms#'TR-BEGIN'.origAddress,
 			sequenceControl = SequenceControl, returnOption = ReturnOption,
@@ -158,7 +158,7 @@ initiation_received({'CONTINUE', transaction, ContParms}, State)
 				dialoguePortion = DialoguePortion, components = ComponentPortion},
 	%% Assemble TR-portion of CONTINUE message
 	{ok, TPDU} = 'TR':encode('TCMessage', {continue, Continue}),
-	{SequenceControl, ReturnOption} = ContParms#'TR-CONTINUE'.qos,
+	{SequenceControl, ReturnOption} = qos_from_tr_prim(ContParms),
 	SccpParms = #'N-UNITDATA'{calledAddress = State#state.remote_address,
 			callingAddress = NewState#state.local_address,
 			sequenceControl = SequenceControl, returnOption = ReturnOption,
@@ -181,7 +181,7 @@ initiation_received({'END', transaction, EndParms}, State)
 	End = #'End'{dialoguePortion = DialoguePortion, components = ComponentPortion},
 	%% Assemble TR-portion of END message
 	{ok, TPDU} = 'TR':encode('TCMessage', {'end', End}),
-	{SequenceControl, ReturnOption} = EndParms#'TR-END'.qos,
+	{SequenceControl, ReturnOption} = qos_from_tr_prim(EndParms),
 	SccpParms = #'N-UNITDATA'{calledAddress = State#state.remote_address,
 			callingAddress = State#state.local_address,
 			sequenceControl = SequenceControl, returnOption = ReturnOption,
@@ -198,7 +198,7 @@ initiation_received({'ABORT', transaction, AbortParms}, State)
 	Abort = #'Abort'{reason = {'u-abortCause', Cause}},
 	%% Assemble TR-portion of ABORT message
 	{ok, TPDU} = 'TR':encode('TCMessage', {abort, Abort}),
-	{SequenceControl, ReturnOption} = AbortParms#'TR-U-ABORT'.qos,
+	{SequenceControl, ReturnOption} = qos_from_tr_prim(AbortParms),
 	SccpParms = #'N-UNITDATA'{calledAddress = State#state.remote_address,
 			callingAddress = State#state.local_address,
 			sequenceControl = SequenceControl, returnOption = ReturnOption,
@@ -305,16 +305,21 @@ active({'CONTINUE', received, SccpParms}, State)
 	gen_fsm:send_event(resolve_dha(State), {'TR', 'CONTINUE', indication, TrParms}),
 	{next_state, active, State};
 
+
 %% Continue from TR-User
 active({'CONTINUE', transaction, ContParms}, State)
 		when is_record(ContParms, 'TR-CONTINUE') ->
 	TrUserData = process_undefined(ContParms#'TR-CONTINUE'.userData),
 	DialoguePortion = TrUserData#'TR-user-data'.dialoguePortion,
 	ComponentPortion = TrUserData#'TR-user-data'.componentPortion,
-	Continue = #'Continue'{dialoguePortion = DialoguePortion, components = ComponentPortion},
+	Otid = State#state.localTID,
+	Dtid = State#state.remoteTID,
+	io:format("OTID ~p, DTID ~p~n", [Otid, Dtid]),
+	Continue = #'Continue'{otid = <<Otid:32/big>>, dtid = <<Dtid:32/big>>,
+				dialoguePortion = DialoguePortion, components = ComponentPortion},
 	%% Assemble TR-portion of CONTINUE message
 	{ok, TPDU} = 'TR':encode('TCMessage', {continue, Continue}),
-	{SequenceControl, ReturnOption} = ContParms#'TR-CONTINUE'.qos,
+	{SequenceControl, ReturnOption} = qos_from_tr_prim(ContParms),
 	SccpParms = #'N-UNITDATA'{calledAddress = State#state.remote_address,
 			callingAddress = State#state.local_address,
 			sequenceControl = SequenceControl, returnOption = ReturnOption,
@@ -352,7 +357,7 @@ active({'END', transaction, EndParms}, State)
 	End = #'End'{dialoguePortion = DialoguePortion, components = ComponentPortion},
 	%% Assemble TR-portion of END message
 	{ok, TPDU} = 'TR':encode('TCMessage', {'end', End}),
-	{SequenceControl, ReturnOption} = EndParms#'TR-END'.qos,
+	{SequenceControl, ReturnOption} = qos_from_tr_prim(EndParms),
 	SccpParms = #'N-UNITDATA'{calledAddress = State#state.remote_address,
 			callingAddress = State#state.local_address,
 			sequenceControl = SequenceControl, returnOption = ReturnOption,
@@ -400,7 +405,7 @@ active({'ABORT', transaction, AbortParms}, State)
 	Abort = #'Abort'{reason = {'u-abortCause', Cause}},
 	%% Assemble TR-portion of ABORT message
 	{ok, TPDU} = 'TR':encode('TCMessage', {abort, Abort}),
-	{SequenceControl, ReturnOption} = AbortParms#'TR-U-ABORT'.qos,
+	{SequenceControl, ReturnOption} = qos_from_tr_prim(AbortParms),
 	SccpParms = #'N-UNITDATA'{calledAddress = State#state.remote_address,
 			callingAddress = State#state.local_address,
 			sequenceControl = SequenceControl, returnOption = ReturnOption,
@@ -452,3 +457,18 @@ resolve_dha(DlgId) when is_integer(DlgId) ->
 	DHA;
 resolve_dha(#state{localTID = TID}) ->
 	resolve_dha(TID).
+
+% QoS from TR-* primitive to {SequenceControl, ReturnOpt}
+qos_from_tr_qos(undefined) ->
+	{false, true};
+qos_from_tr_qos({Seq, Ret}) ->
+	{Seq, Ret}.
+
+qos_from_tr_prim(#'TR-CONTINUE'{qos=Qos}) ->
+	qos_from_tr_qos(Qos);
+qos_from_tr_prim(#'TR-BEGIN'{qos=Qos}) ->
+	qos_from_tr_qos(Qos);
+qos_from_tr_prim(#'TR-END'{qos=Qos}) ->
+	qos_from_tr_qos(Qos);
+qos_from_tr_prim(#'TR-U-ABORT'{qos=Qos}) ->
+	qos_from_tr_qos(Qos).
