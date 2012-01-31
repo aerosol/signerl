@@ -349,7 +349,8 @@ process_rx_components(ISMs, Usap, DlgId, [Head|Tail]) ->
 	process_rx_component(ISMs, Usap, DlgId, Head),
 	process_rx_components(ISMs, Usap, DlgId, Tail).
 
-process_rx_component(ISMs, Usap, DlgId, C={invoke, #'Invoke'{invokeId=InvId}}) ->
+process_rx_component(ISMs, Usap, DlgId, C={invoke, #'Invoke'{}}) ->
+	InvId = get_invoke_id_from_comp(C),
 	{invoke, I} = C,
 	case I#'Invoke'.linkedId of
 	    asn1_NOVALUE ->
@@ -361,8 +362,8 @@ process_rx_component(ISMs, Usap, DlgId, C={invoke, #'Invoke'{invokeId=InvId}}) -
 	end,
 	Prim = asn_rec_to_uprim(C, DlgId),
 	gen_fsm:send_event(Usap, {'TC','INVOKE',indication,Prim});
-process_rx_component(ISMs, _Usap, DlgId, C={reject, #'Reject'{invokeId=InvId,
-							problem=Problem}}) ->
+process_rx_component(ISMs, _Usap, DlgId, C={reject, #'Reject'{problem=Problem}}) ->
+	InvId = get_invoke_id_from_comp(C),
 	ISM = lists:keyfind(InvId, 1, ISMs),
 	case Problem of
 	    {invoke, _} ->
@@ -392,16 +393,16 @@ add_components_to_state(State, CompNew) when is_record(CompNew, component) ->
 % get the invokeId from the given asn-record component tuple.
 get_invoke_id_from_comp({invoke,
 			 #'Invoke'{invokeId = InvId}}) ->
-	InvId;
+	inv_id_to_uprim(InvId);
 get_invoke_id_from_comp({returnResult,
 			 #'ReturnResult'{invokeId = InvId}}) ->
-	InvId;
+	inv_id_to_uprim(InvId);
 get_invoke_id_from_comp({returnResultNotLast,
 			 #'ReturnResult'{invokeId = InvId}}) ->
-	InvId;
+	inv_id_to_uprim(InvId);
 get_invoke_id_from_comp({returnError,
 			 #'ReturnError'{invokeId = InvId}}) ->
-	InvId;
+	inv_id_to_uprim(InvId);
 get_invoke_id_from_comp({reject,
 			 #'Reject'{invokeId = InvId}}) ->
-	InvId.
+	inv_id_to_uprim(InvId).
