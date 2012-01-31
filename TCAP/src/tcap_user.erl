@@ -62,20 +62,71 @@ get_or_start_dha(TCO, DialgId) ->
 		DHA
 	end.
 
+get_dha(_TCO, DialgId) ->
+	case ets:lookup(tcap_dha, DialgId) of
+	    [{DialgId, DHA}] ->
+		{ok, DHA};
+	    _ ->
+		{error, notfound}
+	end.
+
+
+get_dialg_id(#'TC-INVOKE'{dialogueID = DlgId}) ->
+	DlgId;
+get_dialg_id(#'TC-RESULT-L'{dialogueID = DlgId}) ->
+	DlgId;
+get_dialg_id(#'TC-RESULT-NL'{dialogueID = DlgId}) ->
+	DlgId;
+get_dialg_id(#'TC-BEGIN'{dialogueID = DlgId}) ->
+	DlgId;
+get_dialg_id(#'TC-CONTINUE'{dialogueID = DlgId}) ->
+	DlgId;
+get_dialg_id(#'TC-END'{dialogueID = DlgId}) ->
+	DlgId;
+get_dialg_id(#'TC-U-ERROR'{dialogueID = DlgId}) ->
+	DlgId;
+get_dialg_id(#'TC-U-REJECT'{dialogueID = DlgId}) ->
+	DlgId;
+get_dialg_id(#'TC-U-CANCEL'{dialogueID = DlgId}) ->
+	DlgId;
+get_dialg_id(#'TC-U-ABORT'{dialogueID = DlgId}) ->
+	DlgId.
+
 % the user (TCU) sends us a primitive.  We decide where to route it
-send_prim(TCO, P={'TC', 'INVOKE', request, Param}) when
-				is_record(Param, 'TC-INVOKE') ->
-	DialgId = Param#'TC-INVOKE'.dialogueID,
+send_prim(TCO, P={'TC', 'INVOKE', request, Param}) ->
+	% component primitive establishing new dialogue
+	DialgId = get_dialg_id(Param),
 	DHA = get_or_start_dha(TCO, DialgId),
+	CCO = tcap_dha_fsm:get_cco_pid(DHA),
+	gen_server:cast(CCO, P);
+send_prim(TCO, P={'TC', What, request, Param}) when
+				What == 'RESULT-L';
+				What == 'INVOKE';
+				What == 'RESULT-NL';
+				What == 'U-ERROR';
+				What == 'U-CANCEL';
+				What == 'U-REJECT'	->
+	% component primitive relating to existing components
+	DialgId = get_dialg_id(Param),
+	{ok, DHA} = get_dha(TCO, DialgId),
 	CCO = tcap_dha_fsm:get_cco_pid(DHA),
 	gen_server:cast(CCO, P);
 send_prim(TCO, P={'TC', 'BEGIN', request, Param}) when
 				is_record(Param, 'TC-BEGIN') ->
+	% dialogue primitives establishing new dialogue
 	DialgId = Param#'TC-BEGIN'.dialogueID,
 	DHA = get_or_start_dha(TCO, DialgId),
 	gen_fsm:send_event(DHA, P);
+send_prim(TCO, P={'TC', What, request, Param}) when
+				What == 'CONTINUE';
+				What == 'END';
+				What == 'U-ABORT'	->
+	% dialogue primitives for already-existing dialogues
+	DialgId = get_dialg_id(Param),
+	{ok, DHA} = get_dha(TCO, DialgId),
+	gen_fsm:send_event(DHA, P);
 send_prim(_TCO, P) ->
-	{errror, {unknown_prim, P}}.
+	{error, {unknown_prim, P}}.
 
 % high-level user API to start the TCAP SAP supervisor + TCO server for a given SAP
 start_sap(SccpModule, Args, Opts) ->
