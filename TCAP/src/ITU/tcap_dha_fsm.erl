@@ -175,7 +175,7 @@ idle({'TR', 'UNI', indication, UniParms}, State) when is_record(UniParms, 'TR-UN
 					origAddress = UniParms#'TR-UNI'.origAddress,
 					dialogueID = DialogueID,
 					componentsPresent = ComponentsPresent},
-			NewState = State#state{did = DialogueID, parms = NewTcParms},
+			NewState = State#state{did = DialogueID, parms = UniParms},
 			%% Components to CHA
 			case ComponentsPresent of
 				true ->
@@ -201,8 +201,7 @@ idle({'TR', 'BEGIN', indication, BeginParms}, State) when is_record(BeginParms, 
 			ABRT = 'DialoguePDUs':encode('ABRT-apdu', #'ABRT-apdu'{'abort-source' = 'dialogue-service-provider'}),
 			%% Discard components
 			%% TR-U-ABORT request to TSL
-			TrParms = {transactionID = BeginParms#'TR-BEGIN'.transactionID,
-					userData = #'TR-user-data'{dialoguePortion = dialogue_ext(ABRT)}},
+			TrParms = BeginParms#'TR-BEGIN'{userData = #'TR-user-data'{dialoguePortion = dialogue_ext(ABRT)}},
 			NewState = State#state{otid = BeginParms#'TR-BEGIN'.transactionID, parms = TrParms},
 			gen_server:cast(NewState#state.tco, {'TR', 'U-ABORT', request, TrParms}),
 			%% Dialogue terminated to CHA
@@ -246,7 +245,7 @@ idle({'TR', 'BEGIN', indication, BeginParms}, State) when is_record(BeginParms, 
 					dialogueID = DialogueID,
 					componentsPresent = ComponentsPresent},
 			NewState = State#state{otid = BeginParms#'TR-BEGIN'.transactionID, did = DialogueID,
-					parms = NewTcParms, appContextMode = TcParms#'TC-BEGIN'.appContextName},
+					parms = BeginParms, appContextMode = TcParms#'TC-BEGIN'.appContextName},
 			%% TC-BEGIN indication to TCU
 			gen_fsm:send_event(NewState#state.usap, {'TC', 'BEGIN', indication, NewTcParms}),
 			%% Any components?
@@ -421,7 +420,7 @@ initiation_sent({'TR', 'END', indication, EndParms}, State) when is_record(EndPa
 			TcParms = #'TC-P-ABORT'{qos = EndParms#'TR-END'.qos,
 					dialogueID = State#state.did,
 					pAbort = abnormalDialogue},
-			NewState = State#state{parms = TcParms},
+			NewState = State#state{parms = EndParms},
 			gen_fsm:send_event(NewState#state.usap, {'TC', 'P-ABORT', indication, TcParms}),
 			%% Dialogue terminated to CHA
 			gen_server:cast(NewState#state.cco, 'dialogue-terminated'),
@@ -435,7 +434,7 @@ initiation_sent({'TR', 'END', indication, EndParms}, State) when is_record(EndPa
 					componentsPresent = ComponentsPresent,
 					userInfo = AARE,
 					termination = EndParms#'TR-END'.termination},
-			NewState = State#state{parms = TcParms},
+			NewState = State#state{parms = EndParms},
 			gen_fsm:send_event(NewState#state.usap, {'TC', 'END', indication, TcParms}),
 			%% Any components?
 			case ComponentsPresent of
@@ -459,7 +458,7 @@ initiation_sent({'TR', 'NOTICE', indication, NoticeParms}, State) when is_record
 			origAddress = NoticeParms#'TR-NOTICE'.origAddress,
 			destAddress = NoticeParms#'TR-NOTICE'.destAddress,
 			reportCause = NoticeParms#'TR-NOTICE'.reportCause},
-	NewState = State#state{parms = TcParms},
+	NewState = State#state{parms = NoticeParms},
 	gen_fsm:send_event(NewState#state.usap, {'TC', 'NOTICE', indication, TcParms}),
 	{next_state, initiation_sent, NewState};
 
@@ -490,7 +489,7 @@ initiation_sent({'TR', 'CONTINUE', indication, ContParms}, State) when is_record
 			TcParms = #'TC-P-ABORT'{qos = ContParms#'TR-CONTINUE'.qos,
 					dialogueID = State#state.did,
 					pAbort = abnormalDialogue},
-			NewState = State#state{parms = TcParms},
+			NewState = State#state{parms = ContParms},
 			gen_fsm:send_event(NewState#state.usap, {'TC', 'P-ABORT', indication, TcParms}),
 			%% Build ABRT apdu
 			ABRT = 'DialoguePDUs':encode('ABRT-apdu',
@@ -499,7 +498,7 @@ initiation_sent({'TR', 'CONTINUE', indication, ContParms}, State) when is_record
 			%% TR-U-ABORT request to TSL
 			TrParms = #'TR-U-ABORT'{qos = ContParms#'TC-U-ABORT'.qos,
 					transactionID = NewState#state.otid, userData = UserData},
-			LastState = State#state{parms = TrParms},
+			LastState = State#state{parms = ContParms},
 			gen_server:cast(LastState#state.tco, {'TR', 'U-ABORT', request, TrParms}),
 			%% Dialogue terminated to CHA
 			gen_server:cast(LastState#state.cco, 'dialogue-terminated'),
@@ -513,7 +512,7 @@ initiation_sent({'TR', 'CONTINUE', indication, ContParms}, State) when is_record
 					dialogueID = State#state.did,
       			userInfo = AARE,
 					componentsPresent = ComponentsPresent},
-			NewState = State#state{parms = TcParms},
+			NewState = State#state{parms = ContParms},
 			gen_fsm:send_event(NewState#state.usap, {'TC', 'CONTINUE', indication, TcParms}),
 			%% Any components?
 			case ComponentsPresent of
@@ -592,10 +591,10 @@ initiation_sent({'TR', 'U-ABORT', indication, AbortParms}, State) when is_record
 		end
 	end of
 		TcParms when is_record(TcParms, 'TC-U-ABORT') ->
-			NewState = State#state{parms = TcParms},
+			NewState = State#state{parms = AbortParms},
 			gen_fsm:send_event(NewState#state.usap, {'TC', 'U-ABORT', indication, TcParms});
 		TcParms when is_record(TcParms, 'TC-P-ABORT') ->
-			NewState = State#state{parms = TcParms},
+			NewState = State#state{parms = AbortParms},
 			gen_fsm:send_event(NewState#state.usap, {'TC', 'P-ABORT', indication, TcParms})
 	end,
 	%% Dialogue terminated to CHA
@@ -609,7 +608,7 @@ initiation_sent({'TR', 'P-ABORT', indication, AbortParms}, State) when is_record
 	TcParms = #'TC-P-ABORT'{qos = AbortParms#'TR-P-ABORT'.qos,
 			dialogueID = State#state.did,
 			pAbort = AbortParms#'TR-P-ABORT'.pAbort},
-	NewState = State#state{parms = TcParms},
+	NewState = State#state{parms = AbortParms},
 	%% TC-P-ABORT indication to TCU
 	gen_fsm:send_event(NewState#state.usap, {'TC', 'P-ABORT', indication, TcParms}),
 	%% Dialogue terminated to CHA
@@ -621,7 +620,11 @@ initiation_sent({'TR', 'P-ABORT', indication, AbortParms}, State) when is_record
 %% reference: Figure A.5/Q.774 (sheet 9 of 11)
 %% TC-CONTINUE request from TCU
 active({'TC', 'CONTINUE', request, ContParms}, State) when is_record(ContParms, 'TC-CONTINUE') ->
-	NewState = State#state{parms = ContParms},
+	TrParms = #'TR-CONTINUE'{qos = ContParms#'TC-CONTINUE'.qos,
+				origAddress = ContParms#'TC-CONTINUE'.origAddress,
+				transactionID = ContParms#'TC-CONTINUE'.dialogueID,
+				userData = #'TR-user-data'{dialoguePortion = ContParms#'TC-CONTINUE'.userInfo}},
+	NewState = State#state{parms = TrParms},
 	%% Request component to CHA
 	gen_server:cast(NewState#state.cco, 'request-components'),
 	%% Process components
@@ -677,7 +680,7 @@ active({'TR', 'END', indication, EndParms}, State) when is_record(EndParms, 'TR-
 					appContextName = State#state.appContextMode,
 					componentsPresent = ComponentsPresent,
 					termination = EndParms#'TR-END'.termination},
-			NewState = State#state{parms = TcParms},
+			NewState = State#state{parms = EndParms},
 
 			%% Components To CHA
 			gen_fsm:send_event(NewState#state.usap, {'TC', 'END', indication, TcParms}),
