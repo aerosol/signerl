@@ -179,6 +179,7 @@ behaviour_info(Other) ->
 	gen_server:behaviour_info(Other).
 
 -include("TCAPMessages.hrl").
+%-include("TR.hrl").
 -include("tcap.hrl").
 -include("sccp.hrl").
 
@@ -268,87 +269,83 @@ handle_call(Request, From, State) ->
 % reference: Figure A.3/Q.774 (sheet 1 of 4)
 handle_cast({'N', 'UNITDATA', indication, UdataParams}, State) 
 		when is_record(UdataParams, 'N-UNITDATA') ->
-	DecRes = 'TR':decode('TCMessage', UdataParams#'N-UNITDATA'.userData),
-	io:format("Decoded TCMessage: ~p~n", [DecRes]),
-	case DecRes of
-		{ok, {unidirectional, TPDU}} ->
-			case 'TR':decode('Unidirectional', TPDU) of
-				{ok, Unidirectional} ->
-					% Create a Dialogue Handler (DHA) 
-					DialogueID = new_tid(),
-					StartFunc = get_start(dialogue, DialogueID, State),
-					ChildSpec = {DialogueID, StartFunc, temporary, 4000, worker, [tcap_dha_fsm]},
-					{ok, DHA} = supervisor:start_child(State#state.supervisor, ChildSpec),
-					% TR-UNI indication CSL <- TSL
-					UserData = #'TR-user-data'{dialoguePortion = Unidirectional#'Unidirectional'.dialoguePortion,
-							componentPortion = Unidirectional#'Unidirectional'.components},
-					TrParams = #'TR-UNI'{qos =
-							destAddress = UdataParams#'N-UNITDATA'.calledAddress,
-							origAddress = UdataParams#'N-UNITDATA'.callingAddress,
-							userData = UserData},
-					gen_fsm:send_event(DHA, {'TR', 'UNI', indication, TrParams}),
-					{noreply, State};
-				{error, Reason} ->
-					% Discard received message
-					% reference: Figure A.3/Q/774 (sheet 4 of 4) label (3)
-					error_logger:error_report(["Syntax error in received N-UNI", {error, Reason},
+	{ok, {Tag, ActRes}} = 'TR':decode('TCMessage', UdataParams#'N-UNITDATA'.userData),
+	PpRes = {Tag, postproc_tcmessage(ActRes)},
+	io:format("Decoded TCMessage: ~p~n", [PpRes]),
+	case PpRes of
+		{unidirectional, Unidirectional = #'Unidirectional'{}} ->
+			% Create a Dialogue Handler (DHA) 
+			DialogueID = new_tid(),
+			StartFunc = get_start(dialogue, DialogueID, State),
+			ChildSpec = {DialogueID, StartFunc, temporary, 4000, worker, [tcap_dha_fsm]},
+			{ok, DHA} = supervisor:start_child(State#state.supervisor, ChildSpec),
+			% TR-UNI indication CSL <- TSL
+			UserData = #'TR-user-data'{dialoguePortion = Unidirectional#'Unidirectional'.dialoguePortion,
+					componentPortion = Unidirectional#'Unidirectional'.components},
+			TrParams = #'TR-UNI'{qos =
+					destAddress = UdataParams#'N-UNITDATA'.calledAddress,
+					origAddress = UdataParams#'N-UNITDATA'.callingAddress,
+					userData = UserData},
+			gen_fsm:send_event(DHA, {'TR', 'UNI', indication, TrParams}),
+			{noreply, State};
+%					{error, Reason} ->
+%					% Discard received message
+%					% reference: Figure A.3/Q/774 (sheet 4 of 4) label (3)
+%					error_logger:error_report(["Syntax error in received N-UNI", {error, Reason},
+%							{caller, UdataParams#'N-UNITDATA'.callingAddress},
+%							{called, UdataParams#'N-UNITDATA'.calledAddress}]),
+%					{noreply, State}
+%			end;
+		{'begin', TPDU = #'Begin'{}} ->
+			% Assign local transaction ID
+			TransactionID = new_tid(),
+			StartFunc = get_start(in_transaction, TransactionID, State),
+			ChildSpec = {TransactionID, StartFunc, temporary, infinity, supervisor, [tcap_tsm_fsm]},
+			% Is TID = no TID?
+			% Note:  The assignment of the ID above just gets the next available
+			%        value and doesn't ensure that it is not in use (unlikely)
+			%        or that there are enough resources available.  The real
+			%        test is in whether the start succeeds.
+			case supervisor:start_child(State#state.supervisor, ChildSpec) of
+			% FIXME: the entire mobile-termianted
+			% transaction handling needs to reflect tcap_transaction_sup
+				{ok, TSM} ->
+					% Created a Transaction State Machine (TSM)
+					TsmParams = UdataParams#'N-UNITDATA'{userData = TPDU},
+					% BEGIN received TSM <- TCO
+					gen_fsm:send_event(TSM, {'BEGIN', received, TsmParams});
+				_Other ->
+					% TID = no TID
+					% Build ABORT message (P-Abort Cause = Resource Limitation)
+					Abort = {abort, #'Abort'{dtid = TPDU#'Begin'.otid,
+							reason = {'p-abortCause', resourceLimitation}}},
+					NewTPDU = list_to_binary('TCMessage':encode('TCMessage', Abort)),
+					SccpParams = #'N-UNITDATA'{calledAddress = UdataParams#'N-UNITDATA'.callingAddress,
+							callingAddress = UdataParams#'N-UNITDATA'.calledAddress,
+							sequenceControl = false, returnOption = false, importance = none,
+							userData = NewTPDU},
+					% TR-UNI request TSL -> SCCP
+					Module = State#state.module,
+					Module:send_primitive({'N', 'UNITDATA', request, SccpParams}, State#state.ext_state),
+					error_logger:error_report(["Unable to create TSM for received N-BEGIN",
 							{caller, UdataParams#'N-UNITDATA'.callingAddress},
-							{called, UdataParams#'N-UNITDATA'.calledAddress}]),
-					{noreply, State}
-			end;
-		{ok, {'begin', TPDU}} ->
-			case 'TR':decode('Begin', TPDU) of
-				{ok, Begin} ->
-					% Assign local transaction ID
-					TransactionID = new_tid(),
-					StartFunc = get_start(in_transaction, TransactionID, State),
-					ChildSpec = {TransactionID, StartFunc, temporary, infinity, supervisor, [tcap_tsm_fsm]},
-					% Is TID = no TID?
-					% Note:  The assignment of the ID above just gets the next available
-					%        value and doesn't ensure that it is not in use (unlikely)
-					%        or that there are enough resources available.  The real
-					%        test is in whether the start succeeds.
-					case supervisor:start_child(State#state.supervisor, ChildSpec) of
-					% FIXME: the entire mobile-termianted
-					% transaction handling needs to reflect tcap_transaction_sup
-						{ok, TSM} ->
-							% Created a Transaction State Machine (TSM)
-							TsmParams = UdataParams#'N-UNITDATA'{userData = Begin},
-							% BEGIN received TSM <- TCO
-							gen_fsm:send_event(TSM, {'BEGIN', received, TsmParams});
-						_Other ->
-							% TID = no TID
-							% Build ABORT message (P-Abort Cause = Resource Limitation)
-							Abort = {abort, #'Abort'{dtid = TPDU#'Begin'.otid,
-									reason = {'p-abortCause', resourceLimitation}}},
-							NewTPDU = list_to_binary('TCMessage':encode('TCMessage', Abort)),
-							SccpParams = #'N-UNITDATA'{calledAddress = UdataParams#'N-UNITDATA'.callingAddress,
-									callingAddress = UdataParams#'N-UNITDATA'.calledAddress,
-									sequenceControl = false, returnOption = false, importance = none,
-									userData = NewTPDU},
-							% TR-UNI request TSL -> SCCP
-							Module = State#state.module,
-							Module:send_primitive({'N', 'UNITDATA', request, SccpParams}, State#state.ext_state),
-							error_logger:error_report(["Unable to create TSM for received N-BEGIN",
-									{caller, UdataParams#'N-UNITDATA'.callingAddress},
-									{called, UdataParams#'N-UNITDATA'.calledAddress}])
-					end,
-					{noreply, State};
-				{error, Reason} ->
+							{called, UdataParams#'N-UNITDATA'.calledAddress}])
+			end,
+			{noreply, State};
+%				{error, Reason} ->
 % TODO
-					% is OTID derivable?
-					%    Build ABORT message with appropraite P-Abort Cause value
-					%    N-UNITDATA request TSL -> SCCP
-					% Discard received message
-					% reference: Figure A.3/Q/774 (sheet 4 of 4) label (4)
-					error_logger:error_report(["Syntax error in received N-BEGIN", {error, Reason},
-									{caller, UdataParams#'N-UNITDATA'.callingAddress},
-									{called, UdataParams#'N-UNITDATA'.calledAddress}]),
-					{noreply, State}
-			end;
-		{ok, {continue, TPDU = #'Continue'{dtid = Dtid}}} ->
+%					% is OTID derivable?
+%					%    Build ABORT message with appropraite P-Abort Cause value
+%					%    N-UNITDATA request TSL -> SCCP
+%					% Discard received message
+%					% reference: Figure A.3/Q/774 (sheet 4 of 4) label (4)
+%					error_logger:error_report(["Syntax error in received N-BEGIN", {error, Reason},
+%									{caller, UdataParams#'N-UNITDATA'.callingAddress},
+%									{called, UdataParams#'N-UNITDATA'.calledAddress}]),
+%					{noreply, State}
+		{continue, TPDU = #'Continue'{dtid = Dtid}} ->
 			% DTID assigned?
-			case ets:lookup_element(tcap_transaction, decode_tid(Dtid), 2) of
+			case ets:lookup_element(tcap_transaction, Dtid, 2) of
 				{error, _Reason}  ->
 					error_logger:error_report(["DTID not found in received N-CONTINUE",
 								{dtid, Dtid},
@@ -380,9 +377,9 @@ handle_cast({'N', 'UNITDATA', indication, UdataParams}, State)
 %							{called, UdataParams#'N-UNITDATA'.calledAddress}]),
 %					{noreply, State}
 %			end;
-		{ok, {'end', TPDU = #'End'{dtid = Dtid}}} ->
+		{'end', TPDU = #'End'{dtid = Dtid}} ->
 			% DTID assigned?
-			case ets:lookup_element(tcap_transaction, decode_tid(Dtid), 2) of
+			case ets:lookup_element(tcap_transaction, Dtid, 2) of
 				{error, _Reason}  ->
 					error_logger:error_report(["DTID not found in received N-END",
 								{dtid, Dtid},
@@ -408,37 +405,35 @@ handle_cast({'N', 'UNITDATA', indication, UdataParams}, State)
 %							{called, UdataParams#'N-UNITDATA'.calledAddress}]),
 %					{noreply, State}
 %			end;
-		{ok, {abort, TPDU}} ->
-			case 'TR':decode('Abort', TPDU) of
-				{ok, Abort} ->
-					% DTID assigned?
-					case catch ets:lookup(tcap_transaction, TPDU#'Abort'.dtid, 2) of
-						{error, _Reason} ->
-							error_logger:error_report(["DTID not found in received N-ABORT",
-									{dtid, TPDU#'Abort'.dtid},
-									{caller, UdataParams#'N-UNITDATA'.callingAddress},
-									{called, UdataParams#'N-UNITDATA'.calledAddress}]),
-							% Discard received message
-							% reference: Figure A.3/Q/774 (sheet 4 of 4) label (3)
-							{noreply, State};
-						TSM ->
-							TsmParams = UdataParams#'N-UNITDATA'{userData = Abort},
-							% Abort received TSM <- TCO
-							gen_fsm:send_event(TSM, {'ABORT', received, TsmParams}),
-							{noreply, State}
-					end;
-				{error, Reason} ->
-% TODO
-					% DTID assigned?
-					%    Local Abort TSM <- TCO
-					% Discard received message
-					% reference: Figure A.3/Q/774 (sheet 4 of 4) label (5)
-					error_logger:error_report(["Syntax error in received N-ABORT", {error, Reason},
+		{abort, TPDU = #'Abort'{}} ->
+			% DTID assigned?
+			case catch ets:lookup(tcap_transaction, TPDU#'Abort'.dtid, 2) of
+				{error, _Reason} ->
+					error_logger:error_report(["DTID not found in received N-ABORT",
+							{dtid, TPDU#'Abort'.dtid},
 							{caller, UdataParams#'N-UNITDATA'.callingAddress},
 							{called, UdataParams#'N-UNITDATA'.calledAddress}]),
+					% Discard received message
+					% reference: Figure A.3/Q/774 (sheet 4 of 4) label (3)
+					{noreply, State};
+				TSM ->
+					TsmParams = UdataParams#'N-UNITDATA'{userData = TPDU},
+					% Abort received TSM <- TCO
+					gen_fsm:send_event(TSM, {'ABORT', received, TsmParams}),
 					{noreply, State}
 			end;
-		{ok, {error, Reason}} ->
+%					{error, Reason} ->
+% TODO
+%					% DTID assigned?
+%					%    Local Abort TSM <- TCO
+%					% Discard received message
+%					% reference: Figure A.3/Q/774 (sheet 4 of 4) label (5)
+%					error_logger:error_report(["Syntax error in received N-ABORT", {error, Reason},
+%							{caller, UdataParams#'N-UNITDATA'.callingAddress},
+%							{called, UdataParams#'N-UNITDATA'.calledAddress}]),
+%					{noreply, State}
+%			end;
+		{error, Reason} ->
 % TODO
 			% Message type unknown
 			% OTID derivable?
@@ -739,3 +734,11 @@ decode_tid(Bin) when is_binary(Bin) ->
 	binary:decode_unsigned(Bin);
 decode_tid(List) when is_list(List) ->
 	decode_tid(list_to_binary(List)).
+
+postproc_tcmessage(C=#'Continue'{otid = Otid, dtid = Dtid}) ->
+	C#'Continue'{otid = decode_tid(Otid), dtid = decode_tid(Dtid)};
+postproc_tcmessage(E=#'End'{dtid = Dtid}) ->
+	E#'End'{dtid = decode_tid(Dtid)};
+postproc_tcmessage(B=#'Begin'{otid = Otid}) ->
+	B#'Begin'{otid = decode_tid(Otid)}.
+
