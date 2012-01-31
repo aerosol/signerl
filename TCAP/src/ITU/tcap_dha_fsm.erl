@@ -161,8 +161,8 @@ idle({'TR', 'UNI', indication, UniParms}, State) when is_record(UniParms, 'TR-UN
 				is_record(UniParms#'TR-UNI'.userData, 'TR-user-data'),
 						(UniParms#'TR-UNI'.userData)#'TR-user-data'.componentPortion /= asn1_NOVALUE ->
 					case 'TC':decode('Components', (UniParms#'TR-UNI'.userData)#'TR-user-data'.componentPortion) of
-						[] = Components -> ComponentsPresent = false;
-						Components -> ComponentsPresent = true
+						{ok, [] = Components} -> ComponentsPresent = false;
+						{ok, Components} -> ComponentsPresent = true
 					end;
 				true ->
 					Components = undefined,
@@ -230,8 +230,8 @@ idle({'TR', 'BEGIN', indication, BeginParms}, State) when is_record(BeginParms, 
 				is_record(BeginParms#'TR-BEGIN'.userData, 'TR-user-data'),
 						(BeginParms#'TR-BEGIN'.userData)#'TR-user-data'.componentPortion /= asn1_NOVALUE ->
 					case 'TC':decode('Components', (BeginParms#'TR-BEGIN'.userData)#'TR-user-data'.componentPortion) of
-						[] = Components -> ComponentsPresent = false;
-						Components -> ComponentsPresent = true
+						{ok, [] = Components} -> ComponentsPresent = false;
+						{ok, Components} -> ComponentsPresent = true
 					end;
 				true ->
 					Components = undefined,
@@ -402,8 +402,8 @@ initiation_sent({'TR', 'END', indication, EndParms}, State) when is_record(EndPa
 		is_record(EndParms#'TR-END'.userData, 'TR-user-data'),
 				(EndParms#'TR-END'.userData)#'TR-user-data'.componentPortion /= asn1_NOVALUE ->
 			case 'TC':decode('Components', (EndParms#'TR-END'.userData)#'TR-user-data'.componentPortion) of
-				[] = Components -> ComponentsPresent = false;
-				Components -> ComponentsPresent = true
+				{ok, [] = Components} -> ComponentsPresent = false;
+				{ok, Components} -> ComponentsPresent = true
 			end;
 		true ->
 			Components = undefined,
@@ -667,8 +667,8 @@ active({'TR', 'END', indication, EndParms}, State) when is_record(EndParms, 'TR-
 			if
 				ComponentPortion /= asn1_NOVALUE ->
 					case 'TC':decode('Components', ComponentPortion) of
-						[] = Components -> ComponentsPresent = false;
-						Components -> ComponentsPresent = true
+						{ok, [] = Components} -> ComponentsPresent = false;
+						{ok, Components} -> ComponentsPresent = true
 					end;
 				true ->
 					Components = undefined,
@@ -819,7 +819,7 @@ extract_begin_dialogue_portion(UserData) when is_record(UserData, 'TR-user-data'
 		UserData#'TR-user-data'.dialoguePortion /= undefined ->
 	%% Dialogue portion correct?
 	case 'DialoguePDUs':decode('DialoguePDU', UserData#'TR-user-data'.dialoguePortion) of
-		{dialoguePDU, AARQ} when is_record(AARQ, 'AARQ-apdu') ->
+		{ok, {dialoguePDU, AARQ}} when is_record(AARQ, 'AARQ-apdu') ->
 			%% Is version 1 supported?
 			case lists:member(version1, AARQ#'AARQ-apdu'.'protocol-version') of
 				true ->
