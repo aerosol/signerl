@@ -135,6 +135,7 @@ idle({'TC', 'BEGIN', request, BeginParms}, State)
 	TrParms = #'TR-BEGIN'{qos = BeginParms#'TC-BEGIN'.qos,
 			destAddress = BeginParms#'TC-BEGIN'.destAddress,
 			origAddress = BeginParms#'TC-BEGIN'.origAddress,
+			transactionID = BeginParms#'TC-BEGIN'.dialogueID,
 			userData = #'TR-user-data'{dialoguePortion = dialogue_ext(DialoguePortion)}},
 	NewState = State#state{parms = TrParms,
 			%% Set application context mode
@@ -727,8 +728,8 @@ wait_for_begin_components({'requested-components', Components}, State) ->
 	TrParms = (State#state.parms)#'TR-BEGIN'{userData = NewUserData},
 	wait_for_begin_components1(State#state{parms = TrParms}).
 wait_for_begin_components1(State) ->
-	%% Assign local transaction ID
-	TrParms = (State#state.parms)#'TR-BEGIN'{transactionID = tcap_tco_server:new_tid()},
+	%% We don't Assign local transaction ID, as we simply re-use the DialougeID!
+	TrParms = State#state.parms,
 	%% TR-BEGIN request to TSL
 	gen_server:cast(State#state.tco, {'TR', 'BEGIN', request, TrParms}),
 	{next_state, initiation_sent, State#state{parms = TrParms}}.
