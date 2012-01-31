@@ -178,7 +178,7 @@ handle_cast('request-components', State = #state{components=CompIn}) ->
 		gen_fsm:send_event(State#state.dha,
 				   {'requested-components', CompOut}),
 		NewState = State#state{ism = State#state.ism ++ ISMs,
-					components= undefined}
+					components = []}
 	end,
 	{noreply, NewState};
 
