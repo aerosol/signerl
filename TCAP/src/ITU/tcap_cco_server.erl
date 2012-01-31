@@ -207,11 +207,6 @@ code_change(_, _, _) -> ok.
 %%% internal functions
 %%%
 
-% add one or multiple components to the list of components
-add_component_to_state(State, Component) when is_record(State, state) ->
-	NewComponents = State#state.components ++ Component,
-	State#state{components = NewComponents}.
-
 asn_val(Foo) ->
 	case Foo of
 		undefined ->
