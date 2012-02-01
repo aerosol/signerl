@@ -122,7 +122,7 @@ idle('operation-sent', State) ->
 op_sent_cl1(P=#'TC-RESULT-L'{}, State) ->
 	% Figure A.7/Q.774 (2 of 6)
 	% TC-RESULT-L.ind to user
-	gen_server:cast(P, State#state.usap),
+	gen_fsm:send_event(State#state.usap, P),
 	% stop invocation timer
 	timer:cancel(State#state.inv_timer),
 	% start reject timer
@@ -131,7 +131,7 @@ op_sent_cl1(P=#'TC-RESULT-L'{}, State) ->
 op_sent_cl1(P=#'TC-U-REJECT'{}, State) ->
 	% Figure A.7/Q.774 (2 of 6)
 	% TC-U-ERROR.ind to user
-	gen_server:cast(P, State#state.usap),
+	gen_fsm:send_event(State#state.usap, P),
 	% stop invocation timer
 	timer:cancel(State#state.inv_timer),
 	% start reject timer
@@ -140,7 +140,7 @@ op_sent_cl1(P=#'TC-U-REJECT'{}, State) ->
 op_sent_cl1(P=#'TC-RESULT-NL'{}, State) ->
 	% Figure A.7/Q.774 (2 of 6)
 	% TC-RESULT-NL.ind to user
-	gen_server:cast(P, State#state.usap),
+	gen_fsm:send_event(State#state.usap, P),
 	{next_state, op_sent_cl1, State};
 op_sent_cl1('terminate', State) ->
 	% stop invocation timer
@@ -183,7 +183,7 @@ op_sent_cl2('terminate', State) ->
 op_sent_cl3(P=#'TC-RESULT-L'{}, State) ->
 	% Figure A.7/Q.774 (5 of 6)
 	% TC-RESULT-L.ind to user
-	gen_server:cast(State#state.usap, P),
+	gen_fsm:send_event(State#state.usap, P),
 	% stop invocation timer
 	timer:cancel(State#state.inv_timer),
 	% start reject timer
@@ -191,7 +191,7 @@ op_sent_cl3(P=#'TC-RESULT-L'{}, State) ->
 	{next_state, wait_for_reject, State#state{rej_timer = Trej}};
 op_sent_cl3(P=#'TC-RESULT-NL'{}, State) ->
 	% TC-RESULT-NL.ind to user
-	gen_server:cast(State#state.usap, P),
+	gen_fsm:send_event(State#state.usap, P),
 	{next_state, op_sent_cl3, State};
 op_sent_cl3('terminate', State) ->
 	% stop invocation timter
