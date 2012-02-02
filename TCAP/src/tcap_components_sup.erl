@@ -60,6 +60,6 @@ init([USAP, ID]) ->
 	% start the CCO server as well as a (childless) invocation supervisor
 	InvSup = gen_inv_sup_child(ID),
 	Cco = gen_cco_child(USAP, ID),
-	io:format("~p~n", [InvSup]),
+	io:format("~p starting InvSup(~p) CCO(~p)~n", [?MODULE, InvSup, Cco]),
 	{ok,{{one_for_all, 0, 1}, [InvSup, Cco]}}.
 
