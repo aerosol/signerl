@@ -156,8 +156,9 @@ wait_for_reject({timer_expired, reject}, State) ->
 	% terminate
 	{stop, rej_timer_exp, State}.
 
-op_sent_cl2(#'TC-U-REJECT'{}, State) ->
-	% FIXME: TC-U-ERROR.ind to user
+op_sent_cl2(P=#'TC-U-REJECT'{}, State) ->
+	% TC-U-ERROR.ind to user
+	gen_fsm:send_event(State#state.usap, P),
 	% stop invocation timer
 	timer:cancel(State#state.inv_timer),
 	% start reject timer
