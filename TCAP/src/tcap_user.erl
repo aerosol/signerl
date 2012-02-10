@@ -46,7 +46,7 @@
 -copyright('Copyright (c) 2011 Harald Welte').
 -author('Harald Welte <laforge@gnumonks.org>').
 
--export([send_prim/2, start_sap/3]).
+-export([get_dialg_id/1, send_prim/2, start_sap/3]).
 
 -include("tcap.hrl").
 
